@@ -1,0 +1,26 @@
+{
+  "name": "@mutator-party/shared",
+  "version": "0.1.0",
+  "description": "Pure TypeScript game rules shared between server and client",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  }
+}
