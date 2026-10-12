@@ -6,9 +6,14 @@ export const AIR_JUMP_MULT = 0.88;
 
 // ─── Combat & Shove ──────────────────────────────────────────────────────────
 export const SHOVE_COOLDOWN = 0.85; // s
-export const SHOVE_RANGE = 62;   // px
-export const SHOVE_BASE = 620;  // px/s
-export const SHOVE_PER_HIT = 70;   // px/s extra per hit taken
+export const SHOVE_RANGE    = 62;   // px × scale
+export const SHOVE_BASE     = 620;  // px/s (Step 8.2 target: ~420)
+export const SHOVE_PER_HIT  = 70;   // px/s extra per hit taken
+
+// ─── Movement tuning ─────────────────────────────────────────────────────────
+export const ACCEL     = 2800; // px/s² — acceleration to run speed
+export const BRAKE     = 2800; // px/s² — default braking
+export const ICE_BRAKE =  110; // px/s² — braking on 'ice' twist (spec s13.2)
 
 // ─── Modes & Timing ──────────────────────────────────────────────────────────
 export const BOMB_FUSE_BASE = 4;   // s
@@ -44,6 +49,34 @@ export const INPUT_SHOVE = 8;
 // ─── Arena & World ───────────────────────────────────────────────────────────
 export const ARENA_W = 960;
 export const ARENA_H = 540;
+
+// Floor & tiers
+export const FLOOR_Y    = 400;   // px — island floor y
+export const TILE_W     = 100;   // px — island tile width
+export const TIERS      = [300, 210, 130] as const; // platform y levels
+
+// Derived reachability constants (computed from physics — do not change independently)
+// Jump apex height = JUMP_SPEED² / (2 × GRAVITY) ≈ 144 px
+export const JUMP_APEX    = Math.round((720 * 720) / (2 * 1800)); // ~144 px
+export const MAX_STEP_UP  = 130;  // px — max upward gap a player can jump to
+export const MAX_GAP      = 220;  // px — max horizontal gap a player can cross
+
+// Body
+export const BODY_HALF    = 18;   // px — half player width at scale 1.0 (full = 36 px)
+
+// Kill zone
+export const KILL_ZONE_Y  = 630;  // px — fall below this → KO
+export const KILL_ZONE_X_MIN = -90;   // px — exit left  → KO
+export const KILL_ZONE_X_MAX = 1050;  // px — exit right → KO
+
+// Shove popup & stun (also used in movement)
+export const SHOVE_POPUP  = 260;  // px/s — upward velocity on shove
+export const SHOVE_STUN   = 0.22; // s
+
+// Air & coyote
+export const COYOTE_TIME    = 0.09; // s
+export const JUMP_BUFFER    = 0.12; // s
+export const MAX_FALL_SPEED = 1300; // px/s — terminal velocity
 
 // ─── Networking & Room ───────────────────────────────────────────────────────
 export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';

@@ -80,7 +80,7 @@ export const DEFAULTS = {
         lives: 3,
         delaySec: 2,
         shieldSec: 1.5,
-        where: 'spawn' as const,
+        where: 'random_platform' as const,
     },
     items: {
         enabled: true,
@@ -165,7 +165,7 @@ export const RoomSettingsSchema = z.object({
         lives: z.preprocess((v) => clamp(v, 1, 9, DEFAULTS.respawn.lives, true), z.number().int().min(1).max(9)).default(DEFAULTS.respawn.lives),
         delaySec: z.preprocess((v) => clamp(v, 1, 5, DEFAULTS.respawn.delaySec), z.number().min(1).max(5)).default(DEFAULTS.respawn.delaySec),
         shieldSec: z.preprocess((v) => clamp(v, 0, 3, DEFAULTS.respawn.shieldSec), z.number().min(0).max(3)).default(DEFAULTS.respawn.shieldSec),
-        where: z.preprocess((v) => oneOf(v, ['spawn', 'air'] as const, DEFAULTS.respawn.where), z.enum(['spawn', 'air'])).default(DEFAULTS.respawn.where),
+        where: z.preprocess((v) => oneOf(v, ['random_platform', 'center', 'top'] as const, DEFAULTS.respawn.where), z.enum(['random_platform', 'center', 'top'])).default(DEFAULTS.respawn.where),
     }).default({}),
 
     // Section G: Power-ups / items
@@ -259,7 +259,7 @@ export function sanitize(input: unknown = {}, base: RoomSettings = DEFAULTS as R
             lives: clamp(rs.lives, 1, 9, b.respawn.lives, true),
             delaySec: clamp(rs.delaySec, 1, 5, b.respawn.delaySec),
             shieldSec: clamp(rs.shieldSec, 0, 3, b.respawn.shieldSec),
-            where: oneOf(rs.where, ['spawn', 'air'] as const, b.respawn.where),
+            where: oneOf(rs.where, ['random_platform', 'center', 'top'] as const, b.respawn.where),
         },
         items: {
             enabled: it.enabled !== undefined ? it.enabled !== false : b.items.enabled,

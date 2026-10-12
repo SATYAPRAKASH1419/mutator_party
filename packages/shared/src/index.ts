@@ -10,4 +10,5 @@ export * from './arena.js';
 export * from './settings.js';
 export * from './input.js';
 export * from './theme.js';
+export * from './types.js';
 
