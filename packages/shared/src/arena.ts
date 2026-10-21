@@ -3,7 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { mulberry32, hashSeed, shuffleArray } from './rng.js';
-import { ARENA_W } from './constants.js';
+import { ARENA_W, FLOOR_Y, MAX_GAP, MAX_STEP_UP, MAX_W, MIN_SEP, MIN_W, TIERS, TILE_W } from './constants.js';
 
 export interface ArenaOptions {
     seed: number;
@@ -43,16 +43,6 @@ export interface ArenaResult {
     fallback?: true;
 }
 
-// Local layout constants
-const FLOOR_Y = 400;
-const TILE_W = 100;
-const TIERS = [300, 210, 130] as const;
-const MAX_STEP_UP = 130;
-const MAX_GAP = 220;
-const MIN_W = 120;
-const MAX_W = 200;
-const MIN_SEP = 40;
-
 /** Procedurally generates a verified reachable arena layout. */
 export function generateArena({
     seed,
@@ -84,7 +74,7 @@ export function generateArena({
 
         const ok = (c: Platform): boolean => {
             for (const p of all()) if (p.y === c.y && overlapX(c, p, MIN_SEP)) return false;
-            for (const p of all()) if (overlapX(c, p) && Math.abs(p.y - c.y) < 70) return false;
+            for (const p of all()) if (overlapX(c, p) && Math.abs(p.y - c.y) < 70) return false; // TODO : put the 70 in constants.ts as Min_H separation vertical
             return all().some((p) => gapX(c, p) <= MAX_GAP && p.y - c.y <= MAX_STEP_UP);
         };
 
@@ -120,6 +110,7 @@ export function generateArena({
                 const can =
                     (gapX(a, b) <= MAX_GAP && up <= MAX_STEP_UP) ||
                     (gapX(a, b) <= MAX_GAP && up < 0 && Math.abs(up) <= 400);
+                    //So the second condition is effectively redundant for the current implementation. It may have been intended to explicitly document or separately handle downward movement, but it does not currently add a new restriction.
                 if (can) {
                     seen.add(b);
                     q.push(b);

@@ -18,6 +18,60 @@ export const ICE_BRAKE =  110; // px/s² — braking on 'ice' twist (spec s13.2)
 // ─── Modes & Timing ──────────────────────────────────────────────────────────
 export const BOMB_FUSE_BASE = 4;   // s
 export const BOMB_FUSE_SCALE = 0.6; // s per living player
+export const BOMB_HOLDER_SPEED_MULT = 1.12;
+export const BOMB_PASS_COOLDOWN = 0.7; // s
+export const BOMB_BLAST_RADIUS = 260;  // px
+export const BOMB_PASS_KICK = 260;     // px/s
+export const BLAST_SPEED_MAX = 760;    // px/s
+export const BOMB_INITIAL_DELAY = 1.5; // s
+export const BOMB_NEXT_DELAY = 1.4;    // s
+
+export const CROWN_HOLDER_SPEED_MULT = 0.9;
+export const CROWN_STEAL_PROTECTION_SEC = 1.0; // s
+export const CROWN_POPUP_VY = -460;    // px/s
+export const CROWN_RESPAWN_DELAY = 1.0; // s
+export const CROWN_SPAWN_X = 480;
+export const CROWN_SPAWN_Y = 181;
+export const CROWN_RADIUS = 14;
+
+// ─── Items & Crates ──────────────────────────────────────────────────────────
+export const CRATE_FIRST_SPAWN_SEC = 4.0;
+export const CRATE_SPAWN_MIN_SEC = 6.0;
+export const CRATE_SPAWN_MAX_SEC = 9.0;
+export const CRATE_LIFESPAN_SEC = 14.0;
+export const CRATE_BEACON_SEC = 3.0;
+export const CRATE_MAX_ALIVE = 2;
+export const CRATE_RADIUS = 16;
+
+export const ITEM_MEGA_FORCE_MULT = 2.6;
+export const ITEM_MEGA_RANGE_MULT = 1.5;
+export const ITEM_FREEZE_RADIUS = 170;
+export const ITEM_FREEZE_DURATION_SEC = 1.4;
+export const ITEM_SWAP_RADIUS = 460;
+export const ITEM_SWAP_STUN_SELF = 0.25;
+export const ITEM_SWAP_STUN_TARGET = 0.35;
+export const ITEM_SHIELD_DURATION_SEC = 5.0;
+export const RESPAWN_SHIELD_DURATION_SEC = 1.8;
+export const RESPAWN_DEFAULT_DELAY_SEC = 1.5;
+
+// ─── Twists ──────────────────────────────────────────────────────────────────
+export const TWIST_LOW_GRAV_MULT = 0.33;
+export const TWIST_LOW_JUMP_MULT = 0.78;
+export const TWIST_HEAVY_GRAV_MULT = 1.7;
+export const TWIST_HEAVY_JUMP_MULT = 1.2;
+export const TWIST_TINY_SCALE = 0.55;
+export const TWIST_GIANT_SCALE = 1.7;
+export const TWIST_LOTTO_MIN = 0.5;
+export const TWIST_LOTTO_MAX = 1.8;
+export const TWIST_SPEED_MULT = 1.55;
+export const TWIST_WIND_SPEED = 170;
+export const TWIST_WIND_MIN_SEC = 2.5;
+export const TWIST_WIND_MAX_SEC = 4.0;
+export const TWIST_BOUNCE_THRESHOLD = 260;
+export const TWIST_BOUNCE_MULT = 0.8;
+export const TWIST_CRUMBLE_FIRST_SEC = 4.0;
+export const TWIST_CRUMBLE_INTERVAL_SEC = 3.2;
+export const TWIST_CRUMBLE_WARN_SEC = 1.0;
 
 export const ROUND_TIME: Record<string, number> = {
   brawl: 60,
@@ -54,6 +108,10 @@ export const ARENA_H = 540;
 export const FLOOR_Y    = 400;   // px — island floor y
 export const TILE_W     = 100;   // px — island tile width
 export const TIERS      = [300, 210, 130] as const; // platform y levels
+
+export const MIN_SEP = 40;
+export const MIN_W = 120;
+export const MAX_W = 200;
 
 // Derived reachability constants (computed from physics — do not change independently)
 // Jump apex height = JUMP_SPEED² / (2 × GRAVITY) ≈ 144 px

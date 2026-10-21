@@ -3,10 +3,12 @@
 // Called AFTER movement integrates position, BEFORE kill-zone check.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { PlayerState } from '../types.js';
+import type { Island, PlayerState, TileState } from '../types.js';
 import type { Platform } from '../arena.js';
+import type { Twist } from '../constants.js';
 import {
   FLOOR_Y, BODY_HALF, COYOTE_TIME,
+  TWIST_BOUNCE_THRESHOLD, TWIST_BOUNCE_MULT,
 } from '../constants.js';
 
 /**
@@ -17,10 +19,14 @@ import {
 export function applyPlatforms(
   player: PlayerState,
   platforms: Platform[],
+  island: Island,
+  tileStates: TileState[],
   dt: number,
+  twists?: readonly Twist[],
 ): void {
   if (player.isOut) return;
 
+  const bounce = twists?.includes('bounce');
   const halfW = BODY_HALF * player.scale;  // player half-width at current scale
   const halfH = BODY_HALF * player.scale;  // player half-height (square body)
 
@@ -45,21 +51,46 @@ export function applyPlatforms(
     const crossingTop = prevFeetY <= platTop && feetY >= platTop;
 
     if (player.vy >= 0 && crossingTop) {
-      player.y  = platTop - halfH;  // snap feet to platform top
-      player.vy = 0;
-      landed    = true;
+      if (bounce && player.vy > TWIST_BOUNCE_THRESHOLD) {
+        player.y = platTop - halfH;
+        player.vy = -player.vy * TWIST_BOUNCE_MULT;
+        // Keep airborne
+      } else {
+        player.y  = platTop - halfH;  // snap feet to platform top
+        player.vy = 0;
+        landed    = true;
+      }
+      break;
     }
   }
 
   // ── Floor (island tiles at FLOOR_Y) ──────────────────────────────────────
   if (!landed) {
-    const floorTop   = FLOOR_Y;
+    const floorTop = island.y || FLOOR_Y;
+    const tileWidth = island.w / Math.max(1, island.tiles ?? 1);
+    const activeFloor = Array.from(
+      { length: Math.max(1, island.tiles ?? 1) },
+      (_, id) => ({
+        x: island.x + id * tileWidth,
+        y: floorTop,
+        w: tileWidth,
+      }),
+    ).filter((_, id) => !tileStates.find((tile) => tile.id === id)?.fallen);
+    const overlapFloor = activeFloor.some((tile) =>
+      player.x + halfW * 0.8 > tile.x &&
+      player.x - halfW * 0.8 < tile.x + tile.w
+    );
     const crossFloor = (feetY - player.vy * dt) <= floorTop && feetY >= floorTop;
 
-    if (player.vy >= 0 && crossFloor) {
-      player.y  = floorTop - halfH;
-      player.vy = 0;
-      landed    = true;
+    if (player.vy >= 0 && crossFloor && overlapFloor) {
+      if (bounce && player.vy > TWIST_BOUNCE_THRESHOLD) {
+        player.y = floorTop - halfH;
+        player.vy = -player.vy * TWIST_BOUNCE_MULT;
+      } else {
+        player.y  = floorTop - halfH;
+        player.vy = 0;
+        landed    = true;
+      }
     }
   }
 
@@ -79,4 +110,3 @@ export function applyPlatforms(
     player.grounded = false;
   }
 }
-

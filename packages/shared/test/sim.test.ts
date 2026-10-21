@@ -7,6 +7,7 @@ import {
   KILL_ZONE_Y, KILL_ZONE_X_MIN,
 } from '../src/constants.js';
 import type { SimState, PlayerState } from '../src/types.js';
+import type { Platform } from '../src/arena.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -22,9 +23,10 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   };
 }
 
-function makeState(players: PlayerState[], platforms = []): SimState {
+function makeState(players: PlayerState[], platforms: Platform[] = []): SimState {
   return {
     tick: 0, rng: { events: 1 },
+    island: { x: 180, y: 400, w: 600, tiles: 6 },
     players, platforms, tileStates: [],
     crates: [], events: [],
   };
@@ -68,6 +70,30 @@ describe('Determinism', () => {
 
     const run1 = runSim();
     const run2 = runSim();
+    expect(run1).toEqual(run2);
+  });
+
+  it('two bot-driven runs with twists produce identical state hashes', () => {
+    function runBotSim(): string[] {
+      const players = Array.from({ length: 4 }, (_, i) =>
+        makePlayer({ id: `bot${i}`, x: 250 + i * 100, y: 382, grounded: true, isBot: true })
+      );
+      const state = makeState(players);
+      state.mode = 'bomb';
+      const hashes: string[] = [];
+
+      for (let t = 0; t < 30 * 15; t++) {
+        step(state, new Map(), ['wind', 'crumble', 'bounce'], DT);
+        const snap = state.players.map(p =>
+          `${p.x.toFixed(2)},${p.y.toFixed(2)},${p.vx.toFixed(2)},${p.vy.toFixed(2)},${p.isOut}`
+        ).join('|');
+        hashes.push(snap);
+      }
+      return hashes;
+    }
+
+    const run1 = runBotSim();
+    const run2 = runBotSim();
     expect(run1).toEqual(run2);
   });
 });
@@ -120,6 +146,23 @@ describe('Jump physics', () => {
     // Air jump at x0.88 power: apex ~111 px (allow ±20 px tolerance)
     expect(maxRise).toBeGreaterThan(80);
     expect(maxRise).toBeLessThan(135);
+  });
+
+  it('horizontal air distance at full run speed is approximately 336 px', () => {
+    const player = makePlayer({ x: 200, y: 382, grounded: true, vx: 420 });
+    const state = makeState([player]);
+
+    step(state, new Map([['p1', encodeBits({ right: true, jump: true })]]), [], DT);
+    const startX = player.x;
+
+    for (let i = 0; i < 200; i++) {
+      step(state, new Map([['p1', encodeBits({ right: true })]]), [], DT);
+      if (player.grounded) break;
+    }
+
+    const distance = player.x - startX;
+    expect(distance).toBeGreaterThan(300);
+    expect(distance).toBeLessThan(375);
   });
 });
 

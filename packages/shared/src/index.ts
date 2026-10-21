@@ -12,3 +12,16 @@ export * from './input.js';
 export * from './theme.js';
 export * from './types.js';
 
+// Simulation & Physics
+export * from './sim/step.js';
+export * from './sim/movement.js';
+export * from './sim/platforms.js';
+export * from './sim/shove.js';
+export * from './sim/twists/index.js';
+export * from './sim/items.js';
+export * from './sim/modes/index.js';
+export * from './sim/respawn.js';
+export * from './sim/scoring.js';
+
+// Bot AI
+export * from './bots/bot.js';
