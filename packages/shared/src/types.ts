@@ -59,6 +59,23 @@ export interface PlayerState {
   freezeTimer?: number;       // freeze seconds remaining
   respawnTimer?: number;      // countdown to respawn
   crownSeconds?: number;      // seconds crown held this round
+  botSkill?: 'easy' | 'normal' | 'hard';
+}
+
+// ── Respawn & Items Config ────────────────────────────────────────────────────
+
+export interface RespawnConfig {
+  mode: 'off' | 'lives' | 'unlimited';
+  lives?: number;
+  delaySec?: number;
+  shieldSec?: number;
+  where?: 'random_platform' | 'center' | 'top';
+}
+
+export interface ItemConfig {
+  allowed?: readonly Item[];
+  firstTouch?: boolean;
+  keepOnKO?: boolean;
 }
 
 // ── Tiles (crumble twist) ─────────────────────────────────────────────────────
@@ -146,6 +163,10 @@ export interface SimState {
   nextCrumbleTime?: number;
   crateTimer?: number;
   powerSpots?: Vec2[];
+  nextCrateId?: number;       // deterministic crate id counter
+  respawnConfig?: RespawnConfig;
+  itemConfig?: ItemConfig;
+  botSkill?: 'easy' | 'normal' | 'hard';
   bomb?: BombState;           // present only in bomb mode
   crown?: CrownState;         // present only in crown mode
   events: SimEvent[];         // cleared each step after being drained

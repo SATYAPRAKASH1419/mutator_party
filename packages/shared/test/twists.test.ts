@@ -80,6 +80,17 @@ describe('Twists Catalog and Category Rules', () => {
     expect(picked).not.toContain('low');
   });
 
+  it('filters by allowedTwists when provided', () => {
+    const rng = mulberry32(54321);
+    const allowed = ['speed', 'flap', 'ice'] as const;
+    const picked = pickMutators(2, null, rng, allowed);
+
+    expect(picked.length).toBeGreaterThan(0);
+    for (const t of picked) {
+      expect(allowed).toContain(t);
+    }
+  });
+
   it('setupTwists sets player scales for tiny and giant', () => {
     const state = makeTestState();
     const rng = mulberry32(101);

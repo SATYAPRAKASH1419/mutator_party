@@ -77,5 +77,26 @@ describe('Scoring Engine', () => {
     expect(p2Score?.roundPoints).toBe(1);
     expect(p3Score?.roundPoints).toBe(2 + 2); // Rank 2 + 2 clear-lead bonus = 4 pts
   });
+
+  it('grants additional winner_plus bonus when configured', () => {
+    const state: SimState = {
+      tick: 0,
+      rng: { events: 1 },
+      mode: 'brawl',
+      players: [makeTestPlayer('p1'), makeTestPlayer('p2')],
+      eliminated: ['p1'],
+      island: { x: 180, y: 400, w: 600, tiles: 6 },
+      platforms: [],
+      tileStates: [],
+      crates: [],
+      events: [],
+    };
+    state.players[0]!.isOut = true;
+
+    const scores = calculateRoundScores(state, 'winner_plus');
+    const p2Score = scores.find((s) => s.playerId === 'p2');
+    // 1 elim + (2 + 2) winner_plus bonus = 5 pts
+    expect(p2Score?.roundPoints).toBe(5);
+  });
 });
 

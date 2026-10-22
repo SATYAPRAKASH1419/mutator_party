@@ -68,6 +68,7 @@ export function pickMutators(
   n: number,
   forced: Twist | null,
   rng: () => number,
+  allowedTwists?: readonly Twist[],
 ): Twist[] {
   const selectedCats = new Set<TwistCategory>();
   const out: Twist[] = [];
@@ -80,8 +81,11 @@ export function pickMutators(
     }
   }
 
-  // Shuffle available twists
-  const pool = TWIST_CATALOG.filter((t) => t.id !== forced);
+  // Shuffle available twists, filtering by allowedTwists if specified
+  const allowedSet = allowedTwists && allowedTwists.length > 0 ? new Set(allowedTwists) : null;
+  const pool = TWIST_CATALOG.filter(
+    (t) => t.id !== forced && (!allowedSet || allowedSet.has(t.id)),
+  );
   const shuffled = pool.slice();
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));

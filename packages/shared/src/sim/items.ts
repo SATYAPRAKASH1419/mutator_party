@@ -23,8 +23,6 @@ import {
   ITEMS,
 } from '../constants.js';
 
-let nextCrateId = 1;
-
 /**
  * Updates crate spawning and physics.
  */
@@ -32,6 +30,7 @@ export function stepCrates(
   state: SimState,
   dt: number,
   rng: () => number,
+  allowedItems?: readonly Item[],
 ): SimEvent[] {
   const events: SimEvent[] = [];
 
@@ -59,9 +58,18 @@ export function stepCrates(
       }
     }
 
-    const itemType = ITEMS[Math.floor(rng() * ITEMS.length)] ?? 'mega';
+    const itemPool =
+      state.itemConfig?.allowed && state.itemConfig.allowed.length > 0
+        ? state.itemConfig.allowed
+        : allowedItems && allowedItems.length > 0
+        ? allowedItems
+        : ITEMS;
+    const itemType = itemPool[Math.floor(rng() * itemPool.length)] ?? 'mega';
+    const crateId = state.nextCrateId ?? 1;
+    state.nextCrateId = crateId + 1;
+
     const crate: CrateState = {
-      id: nextCrateId++,
+      id: crateId,
       x: spawnX,
       y: spawnY,
       vx: 0,
@@ -152,6 +160,8 @@ export function handleCratePickups(
   const events: SimEvent[] = [];
   const alivePlayers = state.players.filter((p) => !p.isOut);
 
+  const isFirstTouch = state.itemConfig?.firstTouch !== false;
+
   for (let i = state.crates.length - 1; i >= 0; i--) {
     const crate = state.crates[i];
     if (!crate || crate.state !== 'live') continue;
@@ -171,8 +181,9 @@ export function handleCratePickups(
     if (claimants.length === 0) continue;
 
     // First-touch tie break: lower total score wins; then seeded random
+    // If firstTouch is disabled in room settings, random pick among overlappers
     claimants.sort((a, b) => {
-      if (a.score !== b.score) return a.score - b.score;
+      if (isFirstTouch && a.score !== b.score) return a.score - b.score;
       return rng() < 0.5 ? -1 : 1;
     });
 

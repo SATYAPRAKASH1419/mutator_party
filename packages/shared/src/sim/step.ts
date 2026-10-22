@@ -8,7 +8,7 @@ import type { SimState, SimEvent, PlayerState } from '../types.js';
 import type { DecodedInput } from '../input.js';
 import type { Twist } from '../constants.js';
 import { decodeBits } from '../input.js';
-import { BODY_HALF, BOMB_HOLDER_SPEED_MULT, CROWN_HOLDER_SPEED_MULT } from '../constants.js';
+import { BODY_HALF, BOMB_HOLDER_SPEED_MULT, CROWN_HOLDER_SPEED_MULT, BOMB_PASS_KICK } from '../constants.js';
 import { applyMovement } from './movement.js';
 import { applyPlatforms } from './platforms.js';
 import { applyShove } from './shove.js';
@@ -57,7 +57,7 @@ export function step(
     if (inputs.has(player.id)) {
       bits = inputs.get(player.id)!;
     } else if (player.isBot) {
-      bits = computeBotInput(player, state, rng);
+      bits = computeBotInput(player, state, rng, player.botSkill ?? state.botSkill);
     } else {
       bits = 0;
     }
@@ -138,12 +138,12 @@ export function step(
         a.vx -= sx * 40;
         b.vx += sx * 40;
 
-        // Bomb pass on body contact
+        // Bomb pass on body contact (with demo rebound kick)
         if (state.mode === 'bomb' && state.bomb) {
           if (state.bomb.holderId === a.id) {
-            passBomb(state, a, b, events);
+            passBomb(state, a, b, events, BOMB_PASS_KICK);
           } else if (state.bomb.holderId === b.id) {
-            passBomb(state, b, a, events);
+            passBomb(state, b, a, events, BOMB_PASS_KICK);
           }
         }
       }
@@ -179,7 +179,7 @@ export function step(
         if (state.mode === 'crown') {
           player.respawnTimer = 1.5;
         } else {
-          queueRespawn(player);
+          queueRespawn(player, state.respawnConfig);
         }
       }
     }
@@ -205,12 +205,12 @@ export function step(
 
   // ── 8. Power-up Crates ───────────────────────────────────────────────────
   if (state.crates) {
-    events.push(...stepCrates(state, dt, rng));
+    events.push(...stepCrates(state, dt, rng, state.itemConfig?.allowed));
     events.push(...handleCratePickups(state, rng));
   }
 
   // ── 9. Respawns ──────────────────────────────────────────────────────────
-  events.push(...stepRespawns(state, dt, rng));
+  events.push(...stepRespawns(state, dt, rng, state.respawnConfig));
 
   // ── 10. Advance tick counter & persist PRNG state ────────────────────────
   state.tick += 1;

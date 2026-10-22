@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateArena } from '../src/arena.js';
+import { generateArena, islandSizeToTiles } from '../src/arena.js';
 import { ARENA_W } from '../src/constants.js';
 
 describe('Deterministic Arena Generator', () => {
@@ -71,5 +71,11 @@ describe('Deterministic Arena Generator', () => {
                 expect(res.attempts).toBeGreaterThanOrEqual(1);
             }
         }
+    });
+
+    it('maps island size enum to tile count correctly', () => {
+        expect(islandSizeToTiles('S')).toBe(4);
+        expect(islandSizeToTiles('M')).toBe(6);
+        expect(islandSizeToTiles('L')).toBe(8);
     });
 });

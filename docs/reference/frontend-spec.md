@@ -21,7 +21,7 @@ The browser client for **Mutator Party**: a party game for 2 to 12 players with 
 | Language and build | TypeScript (`strict`), Vite |
 | Game rendering | Phaser 4, pin an exact 4.2.x version. No Phaser plugins at first. |
 | Menus, lobby, settings, HUD | DOM (HTML and CSS) with Preact (or plain TypeScript). Not drawn inside Phaser. |
-| Network | Colyseus client SDK 0.17.x (follow https://docs.colyseus.io; do not guess APIs) |
+| Network | Colyseus client SDK 0.18.x (follow https://docs.colyseus.io; do not guess APIs) |
 | Validation | the shared Zod schema from `packages/shared` |
 | Icons | Lucide (UI icons) and Noto Emoji or Twemoji sprites (game icons); check licenses, keep a `CREDITS` page |
 | Fonts | Bagel Fat One (display) and Nunito 700 and 900 (body), self-hosted `.woff2` |

@@ -113,7 +113,7 @@ export const RoomSettingsSchema = z.object({
         chat: z.preprocess((v) => oneOf(v, ['off', 'emotes', 'filtered'] as const, DEFAULTS.room.chat), z.enum(['off', 'emotes', 'filtered'])).default(DEFAULTS.room.chat),
         spectators: z.preprocess((v) => (v === undefined ? DEFAULTS.room.spectators : v !== false), z.boolean()).default(DEFAULTS.room.spectators),
         allowKick: z.preprocess((v) => (v === undefined ? DEFAULTS.room.allowKick : v !== false), z.boolean()).default(DEFAULTS.room.allowKick),
-    }).default({}),
+    }).default(DEFAULTS.room),
 
     // Section B: Match rules & players
     match: z.object({
@@ -127,7 +127,7 @@ export const RoomSettingsSchema = z.object({
             z.union([z.literal('auto'), z.number().min(30).max(120)])
         ).default(DEFAULTS.match.roundTime),
         scoring: z.preprocess((v) => oneOf(v, ['standard', 'winner_plus', 'kills'] as const, DEFAULTS.match.scoring), z.enum(['standard', 'winner_plus', 'kills'])).default(DEFAULTS.match.scoring),
-    }).default({}),
+    }).default(DEFAULTS.match),
 
     // Section C: Arena generator options
     arena: z.object({
@@ -136,7 +136,7 @@ export const RoomSettingsSchema = z.object({
         layout: z.preprocess((v) => oneOf(v, ['every_round', 'per_match', 'classic'] as const, DEFAULTS.arena.layout), z.enum(['every_round', 'per_match', 'classic'])).default(DEFAULTS.arena.layout),
         mirror: z.preprocess((v) => (v === undefined ? DEFAULTS.arena.mirror : v !== false), z.boolean()).default(DEFAULTS.arena.mirror),
         shuffleSpawns: z.preprocess((v) => (v === undefined ? DEFAULTS.arena.shuffleSpawns : v !== false), z.boolean()).default(DEFAULTS.arena.shuffleSpawns),
-    }).default({}),
+    }).default(DEFAULTS.arena),
 
     // Section D: Modes
     modes: z.object({
@@ -150,14 +150,14 @@ export const RoomSettingsSchema = z.object({
             (v) => oneOf(v, ['last_place', 'vote', 'host', 'random', 'round_robin'] as const, DEFAULTS.modes.twistPicker),
             z.enum(['last_place', 'vote', 'host', 'random', 'round_robin'])
         ).default(DEFAULTS.modes.twistPicker),
-    }).default({}),
+    }).default(DEFAULTS.modes),
 
     // Section E: Twists / hurdles
     twists: z.object({
         allowed: z.preprocess((v) => allowedArray(v, TWISTS, DEFAULTS.twists.allowed), z.array(z.enum([...TWISTS]))).default([...DEFAULTS.twists.allowed]),
         perRound: z.preprocess((v) => oneOf(v, ['1', '2', '3', 'ramp'] as const, DEFAULTS.twists.perRound), z.enum(['1', '2', '3', 'ramp'])).default(DEFAULTS.twists.perRound),
         themeLinked: z.preprocess((v) => (v === undefined ? DEFAULTS.twists.themeLinked : v === true), z.boolean()).default(DEFAULTS.twists.themeLinked),
-    }).default({}),
+    }).default(DEFAULTS.twists),
 
     // Section F: Respawn & lives
     respawn: z.object({
@@ -166,7 +166,7 @@ export const RoomSettingsSchema = z.object({
         delaySec: z.preprocess((v) => clamp(v, 1, 5, DEFAULTS.respawn.delaySec), z.number().min(1).max(5)).default(DEFAULTS.respawn.delaySec),
         shieldSec: z.preprocess((v) => clamp(v, 0, 3, DEFAULTS.respawn.shieldSec), z.number().min(0).max(3)).default(DEFAULTS.respawn.shieldSec),
         where: z.preprocess((v) => oneOf(v, ['random_platform', 'center', 'top'] as const, DEFAULTS.respawn.where), z.enum(['random_platform', 'center', 'top'])).default(DEFAULTS.respawn.where),
-    }).default({}),
+    }).default(DEFAULTS.respawn),
 
     // Section G: Power-ups / items
     items: z.object({
@@ -175,7 +175,7 @@ export const RoomSettingsSchema = z.object({
         spots: z.preprocess((v) => clamp(v, 0, 5, DEFAULTS.items.spots, true), z.number().int().min(0).max(5)).default(DEFAULTS.items.spots),
         firstTouch: z.preprocess((v) => (v === undefined ? DEFAULTS.items.firstTouch : v !== false), z.boolean()).default(DEFAULTS.items.firstTouch),
         keepOnKO: z.preprocess((v) => (v === undefined ? DEFAULTS.items.keepOnKO : v === true), z.boolean()).default(DEFAULTS.items.keepOnKO),
-    }).default({}),
+    }).default(DEFAULTS.items),
 
     // Section H: Themes
     theme: z.object({
@@ -185,8 +185,8 @@ export const RoomSettingsSchema = z.object({
             (v) => (Array.isArray(v) ? (v.filter((x): x is Theme => (THEMES as readonly string[]).includes(x)).slice(0, 15) as Theme[]) : []),
             z.array(z.enum([...THEMES])).max(15)
         ).default([]),
-    }).default({}),
-}).default({});
+    }).default(DEFAULTS.theme),
+}).default(DEFAULTS);
 
 export type RoomSettings = z.infer<typeof RoomSettingsSchema>;
 

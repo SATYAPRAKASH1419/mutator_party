@@ -169,5 +169,27 @@ describe('Items & Power-up Crates', () => {
     expect(p2.stunTimer).toBe(0);
     expect(p2.hitsTaken).toBe(0);
   });
+
+  it('spawns only allowed items when itemConfig.allowed is specified', () => {
+    const state = makeTestState();
+    state.itemConfig = { allowed: ['freeze'] };
+    state.crateTimer = 0;
+    const rng = mulberry32(123);
+
+    stepCrates(state, 1 / 30, rng);
+    expect(state.crates.length).toBe(1);
+    expect(state.crates[0]!.type).toBe('freeze');
+  });
+
+  it('manages nextCrateId deterministically on state without global leaks', () => {
+    const state1 = makeTestState();
+    state1.nextCrateId = 10;
+    state1.crateTimer = 0;
+    const rng1 = mulberry32(111);
+
+    stepCrates(state1, 1 / 30, rng1);
+    expect(state1.crates[0]!.id).toBe(10);
+    expect(state1.nextCrateId).toBe(11);
+  });
 });
 

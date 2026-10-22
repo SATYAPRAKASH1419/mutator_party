@@ -2,16 +2,10 @@
 // Respawn rules, countdown timers, shield grants, and spawn point selection.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { PlayerState, SimEvent, SimState } from '../types.js';
+import type { PlayerState, RespawnConfig, SimEvent, SimState } from '../types.js';
 import { BODY_HALF, RESPAWN_DEFAULT_DELAY_SEC, RESPAWN_SHIELD_DURATION_SEC } from '../constants.js';
 
-export interface RespawnConfig {
-  mode: 'off' | 'lives' | 'unlimited';
-  lives?: number;
-  delaySec?: number;
-  shieldSec?: number;
-  where?: 'random_platform' | 'center' | 'top';
-}
+export type { RespawnConfig };
 
 /**
  * Triggers a respawn countdown for an eliminated player if rules permit.

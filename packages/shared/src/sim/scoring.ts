@@ -12,8 +12,12 @@ export interface PlayerRoundScore {
 
 /**
  * Computes round points and updates each player's cumulative score.
+ * Supports 'standard', 'winner_plus' (+2 bonus for solo winner), and 'kills' scoring modes.
  */
-export function calculateRoundScores(state: SimState): PlayerRoundScore[] {
+export function calculateRoundScores(
+  state: SimState,
+  scoringMode: 'standard' | 'winner_plus' | 'kills' = 'standard',
+): PlayerRoundScore[] {
   const mode = state.mode ?? 'brawl';
   const pointsMap = new Map<string, number>();
 
@@ -27,7 +31,7 @@ export function calculateRoundScores(state: SimState): PlayerRoundScore[] {
       pointsMap.set(player.id, idx);
     });
 
-    // Top player clear lead bonus (+2 points if > 1s ahead of 2nd place)
+    // Top player clear lead bonus (+2 points if > 1s ahead of 2nd place, +4 for winner_plus)
     if (sorted.length >= 2) {
       const top = sorted[sorted.length - 1];
       const second = sorted[sorted.length - 2];
@@ -36,7 +40,8 @@ export function calculateRoundScores(state: SimState): PlayerRoundScore[] {
         const secondSec = second.crownSeconds ?? 0;
 
         if (topSec > secondSec + 1.0) {
-          pointsMap.set(top.id, (pointsMap.get(top.id) ?? 0) + 2);
+          const bonus = scoringMode === 'winner_plus' ? 4 : 2;
+          pointsMap.set(top.id, (pointsMap.get(top.id) ?? 0) + bonus);
         }
       }
     }
@@ -54,12 +59,16 @@ export function calculateRoundScores(state: SimState): PlayerRoundScore[] {
     const elimCount = eliminatedOrder.length;
 
     alive.forEach((p) => {
-      const bonus = alive.length === 1 ? 2 : 1;
+      const isSoloWinner = alive.length === 1;
+      let bonus = isSoloWinner ? 2 : 1;
+      if (isSoloWinner && scoringMode === 'winner_plus') {
+        bonus += 2; // +4 total bonus for solo winner in winner_plus
+      }
       pointsMap.set(p.id, elimCount + bonus);
     });
   }
 
-  // Update cumulative scores and return results
+  // Update cumulative scores and return results with deterministic tie-breaks
   const results: PlayerRoundScore[] = state.players.map((player) => {
     const roundPts = pointsMap.get(player.id) ?? 0;
     player.score += roundPts;
@@ -70,5 +79,11 @@ export function calculateRoundScores(state: SimState): PlayerRoundScore[] {
     };
   });
 
-  return results.sort((a, b) => b.totalScore - a.totalScore);
+  return results.sort(
+    (a, b) =>
+      b.totalScore - a.totalScore ||
+      ((state.players.find((p) => p.id === b.playerId)?.crownSeconds ?? 0) -
+        (state.players.find((p) => p.id === a.playerId)?.crownSeconds ?? 0)) ||
+      a.playerId.localeCompare(b.playerId),
+  );
 }

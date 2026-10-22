@@ -43,6 +43,17 @@ export interface ArenaResult {
     fallback?: true;
 }
 
+export const ISLAND_TILES_BY_SIZE = {
+    S: 4,
+    M: 6,
+    L: 8,
+} as const;
+
+/** Maps island size enum ('S' | 'M' | 'L') to number of floor island tiles (4 | 6 | 8). */
+export function islandSizeToTiles(size: 'S' | 'M' | 'L'): number {
+    return ISLAND_TILES_BY_SIZE[size] ?? 6;
+}
+
 /** Procedurally generates a verified reachable arena layout. */
 export function generateArena({
     seed,

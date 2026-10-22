@@ -15,9 +15,9 @@ import {
   CROWN_STEAL_PROTECTION_SEC,
 } from '../../constants.js';
 
-export function initCrown(state: SimState): void {
+export function initCrown(state: SimState, roundTime = 45.0): void {
   state.mode = 'crown';
-  state.timeLeft = 45.0;
+  state.timeLeft = roundTime;
   state.eliminated = [];
   state.endTimer = undefined;
   state.crown = {

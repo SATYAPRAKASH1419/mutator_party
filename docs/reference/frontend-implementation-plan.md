@@ -7,7 +7,7 @@ Companion to `frontend-spec.md` (the contract), `backend-spec.md` (messages, set
 ## 1. Goals and constraints (recap)
 
 - Mobile-first browser client: link to playing in under 15 s on a phone; 60 fps on a low-end Android phone; interactive in under 3 s on 4G.
-- Fixed stack: TypeScript strict, Vite, Phaser 4 (pin exact 4.2.x), Preact for DOM UI, Colyseus SDK 0.17.x, shared Zod schema, Lucide + Noto Emoji/Twemoji, Bagel Fat One + Nunito (self-hosted woff2), Vitest, Playwright.
+- Fixed stack: TypeScript strict, Vite, Phaser 4 (pin exact 4.2.x), Preact for DOM UI, Colyseus SDK 0.18.x, shared Zod schema, Lucide + Noto Emoji/Twemoji, Bagel Fat One + Nunito (self-hosted woff2), Vitest, Playwright.
 - Rules:
   - **R1** All game rules and numbers come from `packages/shared`. Import, never copy.
   - **R2** Phaser draws the world only (arena, players, crates, effects). Anything with text, forms or buttons is DOM.
@@ -152,7 +152,7 @@ Check: returning player skips name entry; layout works at 360 px; join link with
 
 Tasks
 1. `RoomConnection` interface (section 3) and two implementations behind a factory: `?mock=1` or `VITE_MOCK=1` selects `mockServer`.
-2. Real connection (`connection.ts`): Colyseus client 0.17 `joinById`/`create`/`reconnect` per docs (consult docs for how to find a room by the 5-char code, matching the backend's metadata lookup). Store `playerId` and `sessionToken` (and Colyseus reconnection token if it differs) in localStorage after join. Map server `error` messages and thrown join errors to UI states.
+2. Real connection (`connection.ts`): Colyseus client 0.18 `joinById`/`create`/`reconnect` per docs (consult docs for how to find a room by the 5-char code, matching the backend's metadata lookup). Store `playerId` and `sessionToken` (and Colyseus reconnection token if it differs) in localStorage after join. Map server `error` messages and thrown join errors to UI states.
 3. State decoding: subscribe to schema changes and emit a decoded immutable snapshot with a server timestamp; keep decode allocation-light.
 4. Reconnect: use SDK auto-reconnect within the 30 s window; `status` goes `reconnecting` (banner with countdown), resolves to `connected` and refreshes state, else `lost` with "Back to home".
 5. Error states UI (Banner/Modal): wrong code ("We could not find that room."), room full (offer spectate if allowed), kicked, connection lost, reconnecting, version mismatch, rate limited.

@@ -19,7 +19,7 @@ An authoritative multiplayer game server for **Mutator Party**, a browser party 
 |---|---|
 | Language | TypeScript, `strict: true`, ES modules |
 | Runtime | Node.js current LTS (20 or newer) |
-| Framework | Colyseus 0.17.x (rooms, schema state sync, reconnection). Follow https://docs.colyseus.io for exact 0.17 APIs. Do not guess APIs. |
+| Framework | Colyseus 0.18.x (rooms, schema v5 state sync, reconnection, @colyseus/tools). Follow https://docs.colyseus.io for exact 0.18 APIs. Do not guess APIs. |
 | Validation | Zod for every message and every setting |
 | Monorepo | pnpm workspaces |
 | Tests | Vitest (unit and simulation), Playwright (2 browser end-to-end, later) |

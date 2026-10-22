@@ -49,9 +49,11 @@ export function computeBotInput(
   bot: PlayerState,
   state: SimState,
   rng: () => number,
-  skill: BotSkill = 'normal',
+  skill?: BotSkill,
 ): number {
   if (bot.isOut) return 0;
+
+  const effectiveSkill: BotSkill = skill ?? bot.botSkill ?? state.botSkill ?? 'normal';
 
   let mem = bot.botMemory;
   if (!mem) {
@@ -62,8 +64,8 @@ export function computeBotInput(
   const dt = 1 / 30;
   mem.thinkingTimer -= dt;
 
-  const reactionDelay = skill === 'hard' ? 0.08 : skill === 'normal' ? 0.2 : 0.35;
-  const mistakeProb = skill === 'hard' ? 0.0 : skill === 'normal' ? 0.02 : 0.08;
+  const reactionDelay = effectiveSkill === 'hard' ? 0.08 : effectiveSkill === 'normal' ? 0.2 : 0.35;
+  const mistakeProb = effectiveSkill === 'hard' ? 0.0 : effectiveSkill === 'normal' ? 0.02 : 0.08;
 
   // ── 1. Target Evaluation & Decision Refresh ──────────────────────────────
   if (mem.thinkingTimer <= 0) {

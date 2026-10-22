@@ -8,14 +8,15 @@ import {
   BOMB_FUSE_SCALE,
   BOMB_PASS_COOLDOWN,
   BOMB_BLAST_RADIUS,
+  BOMB_PASS_KICK,
   BLAST_SPEED_MAX,
   BOMB_INITIAL_DELAY,
   BOMB_NEXT_DELAY,
 } from '../../constants.js';
 
-export function initBomb(state: SimState): void {
+export function initBomb(state: SimState, roundTime = 75.0): void {
   state.mode = 'bomb';
-  state.timeLeft = 75.0;
+  state.timeLeft = roundTime;
   state.eliminated = [];
   state.endTimer = undefined;
   state.bomb = {
@@ -32,6 +33,7 @@ export function passBomb(
   fromPlayer: PlayerState,
   toPlayer: PlayerState,
   events: SimEvent[],
+  kick = 0,
 ): boolean {
   if (!state.bomb || state.bomb.holderId !== fromPlayer.id) return false;
   if ((state.bomb.passCooldown ?? 0) > 0) return false;
@@ -40,6 +42,12 @@ export function passBomb(
 
   state.bomb.holderId = toPlayer.id;
   state.bomb.passCooldown = BOMB_PASS_COOLDOWN;
+
+  if (kick > 0) {
+    const dir = Math.sign(toPlayer.x - fromPlayer.x) || 1;
+    fromPlayer.vx -= dir * kick;
+    toPlayer.vx += dir * kick;
+  }
 
   events.push({
     type: 'bomb_pass',

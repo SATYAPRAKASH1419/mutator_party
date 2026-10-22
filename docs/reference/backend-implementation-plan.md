@@ -7,12 +7,12 @@ Companion to `backend-spec.md` (the contract) and the product spec `mutator-part
 ## 1. Goals and constraints (recap)
 
 - Authoritative multiplayer server, 2 to 12 players per room, ~60 s rounds, 30 Hz fixed sim, 20 Hz patches.
-- Stack is fixed: TypeScript strict, Node 20+ LTS, Colyseus 0.17.x, Zod, pnpm workspaces, Vitest, Playwright, pino.
+- Stack is fixed: TypeScript strict, Node 20+ LTS, Colyseus 0.18.x, Zod, pnpm workspaces, Vitest, Playwright, pino.
 - Hard rules:
   - **R1** `packages/shared` imports nothing from Colyseus, Node APIs or Phaser.
   - **R2** `step(state, inputs, dt) -> state` is pure, `dt = 1/30`, no `Date.now()`, no `Math.random()`; randomness comes from a seeded RNG stored in state.
 - Do not start a step until the previous step's acceptance tests pass. Commit after each step.
-- Do not guess Colyseus 0.17 APIs; read https://docs.colyseus.io before each integration task.
+- Do not guess Colyseus 0.18 APIs; read https://docs.colyseus.io before each integration task.
 
 ### Targets to prove with tests (from spec section 2.2)
 
@@ -161,7 +161,7 @@ Exit gate: determinism test green, benchmark recorded in the PR description.
 
 Tasks
 1. `config.ts`: parse env (spec s9) with Zod: `PORT 2567, ALLOWED_ORIGINS, TICK_HZ 30, PATCH_HZ 20, MAX_ROOMS_PER_IP 3, REDIS_URL, LOG_LEVEL info, SENTRY_DSN`.
-2. `index.ts`: Colyseus server on Node HTTP, register `GameRoom`, `GET /healthz` (returns 200 + `{ok, rooms, uptime}`). Check the 0.17 docs for exact `Server`/`defineRoom` and transport APIs.
+2. `index.ts`: Colyseus server on Node HTTP via `@colyseus/tools`, register `GameRoom`, `GET /healthz` (returns 200 + `{ok, rooms, uptime}`). Check the 0.18 docs for exact `listen`/`define` and transport APIs.
 3. `roomCode.ts`: 5 chars from `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (31 symbols), crypto random, retry on collision. Store `code` in room metadata; lookup by code via matchmaker query/presence key (confirm in docs). A wrong code, full room or locked room all return the **same** generic error `{code:'ROOM_UNAVAILABLE', message:'We could not find that room.'}`.
 4. `GameRoom.onAuth/onJoin`: validate join options with Zod `{code?, name, color, playerId, token?}`.
    - Name: letters/digits/space/`_ - '`, 2 to 16 chars, trimmed, collapse repeated spaces rejected; block URLs, e-mails, phone numbers, reserved words (`you, host, admin, bot, system`, plus bot names); profanity filter (English + Hinglish list, leetspeak/look-alike normalization). De-dupe in-room with ` #2`, ` #3`.
@@ -245,7 +245,7 @@ Exit gate: all unit tests above pass.
 Tasks
 1. **Bots** (`packages/shared/bots`): port demo AI (chase, flee, shove, item use, bomb/crown goals). Output the same 4-bit input mask. `botSkill` easy/normal/hard scales reaction delay and edge awareness. Include the edge-safety logic now (Step 8.2 depends on it): before applying left/right, if the position after ~0.25 s lookahead is beyond island/platform edges with no platform below within jump reach, cancel the move; remove the 8 % "suicidal" random decision (or make it `easy`-only, ~2 %). Bot RNG uses the seeded `events` stream so server sims are reproducible.
 2. **Bot takeover**: when a player disconnects (consented=false) or is AFK >= 30 s, flip `isBot` flag and route AI input within 1 tick (gate). Keep name and score. When the human reconnects and is accepted, flip back and resume human input on the next tick.
-3. **Reconnect (30 s)**: use Colyseus `allowReconnection(client, 30)` per 0.17 docs; validate `sessionToken` + `playerId`; if the room was disposed, return generic error. Rate limit reconnect attempts.
+3. **Reconnect (30 s)**: use Colyseus `allowReconnection(client, 30)` per 0.18 docs; validate `sessionToken` + `playerId`; if the room was disposed, return generic error. Rate limit reconnect attempts.
 4. **AFK**: track last non-zero input time during `play` only; warn at 15 s via `event {type:'toast', ...}` (or a dedicated `afk_warn` event), bot at 30 s, after 2 consecutive missed rounds convert to spectator (product 3.3). Any input returns control only after the player explicitly sends input (don't flap).
 5. **Host migration**: on host leave (after grace? host leave is immediate for lobby; for disconnect use reconnect window with host role retained 30 s, then migrate). Longest-connected human becomes host; broadcast `toast` ("X is now the host"). If no humans remain, dispose.
 6. **Kick**: host-only `kick {playerId}`; kicked token is banned for that room for its lifetime (`room.allowKick` setting).
@@ -307,7 +307,7 @@ Exit gate: `docs/perf.md` has the load numbers and the round-length tests pass.
 ### Step 9: Scale-out (only after 1 to 8)
 
 Tasks
-1. Add Colyseus Redis presence and driver packages (names/versions from the 0.17 docs). `REDIS_URL` toggles multi-process mode; empty = in-memory.
+1. Add Colyseus Redis presence and driver packages (names/versions from the 0.18 docs). `REDIS_URL` toggles multi-process mode; empty = in-memory.
 2. Move rate limiter, room code uniqueness lookup and per-IP room counts to Redis behind existing interfaces.
 3. Deployment: reverse proxy/load balancer per Colyseus deployment docs (sticky sessions or processId-based routing as documented), TLS, health checks on `/healthz`.
 4. Optional uWebSockets transport if Step 8 shows the network layer is the limit.
@@ -390,7 +390,7 @@ CI order: lint, typecheck, unit, room integration, then slow sims nightly.
 
 | Risk | Mitigation |
 |---|---|
-| Colyseus 0.17 API differs from memory | Read docs per task; wrap Colyseus in thin adapters so only `GameRoom.ts` and `index.ts` touch it |
+| Colyseus 0.18 API differs from memory | Read docs per task; wrap Colyseus in thin adapters so only `GameRoom.ts` and `index.ts` touch it |
 | Schema patch grows past 600 B | quantize, bitfield flags, patch-size test in CI |
 | Sim drift between server and client prediction | shared `step`, golden-state tests, `ackSeq` reconciliation |
 | Rounds still too short after tuning | constants isolated; simulation test gates every tuning PR |

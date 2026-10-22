@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "pnpm --filter @mutator-party/shared test",
+    "test": "pnpm -r test",
     "build": "pnpm -r build"
   },
   "keywords": [],

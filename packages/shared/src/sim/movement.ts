@@ -7,8 +7,7 @@ import type { PlayerState, SimEvent } from '../types.js';
 import type { DecodedInput } from '../input.js';
 import type { Twist } from '../constants.js';
 import {
-  GRAVITY, RUN_SPEED, JUMP_SPEED, AIR_JUMP_MULT,
-  COYOTE_TIME, JUMP_BUFFER, MAX_FALL_SPEED,
+  GRAVITY, RUN_SPEED, JUMP_SPEED, AIR_JUMP_MULT, JUMP_BUFFER, MAX_FALL_SPEED,
   KILL_ZONE_Y, KILL_ZONE_X_MIN, KILL_ZONE_X_MAX,
   ACCEL, BRAKE, ICE_BRAKE, BODY_HALF,
   TWIST_LOW_GRAV_MULT, TWIST_LOW_JUMP_MULT,
@@ -109,7 +108,7 @@ export function applyMovement(
       player.facingRight = dir > 0;
       const targetV = dir * maxSpeed + windV;
       if (player.vx < targetV) {
-        player.vx = Math.min(player.vx + accel * dt, targetV);
+        player.vx = Math.min(player.vx + accel * dt, targetV); 
       } else if (player.vx > targetV) {
         player.vx = Math.max(player.vx - accel * dt, targetV);
       }
