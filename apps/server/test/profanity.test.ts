@@ -26,6 +26,23 @@ describe("Profanity Filter and Leetspeak Normalization", () => {
     expect(containsProfanity("playerOne")).toBe(false);
   });
 
+  it("handles short slang tokens (mc, bc) without false positives on benign names", () => {
+    // Standalone tokens or word boundaries should be detected
+    expect(containsProfanity("mc")).toBe(true);
+    expect(containsProfanity("bc")).toBe(true);
+    expect(containsProfanity("bad mc")).toBe(true);
+    expect(containsProfanity("player_bc")).toBe(true);
+
+    // Benign substrings should NOT be flagged as profanity
+    expect(containsProfanity("McQueen")).toBe(false);
+    expect(containsProfanity("Tomcat")).toBe(false);
+    expect(containsProfanity("abc")).toBe(false);
+    expect(containsProfanity("Broadcast")).toBe(false);
+
+    expect(validatePlayerName("McQueen").valid).toBe(true);
+    expect(validatePlayerName("Tomcat").valid).toBe(true);
+  });
+
   it("blocks profanity inside validatePlayerName", () => {
     const res = validatePlayerName("badfuck");
     expect(res.valid).toBe(false);

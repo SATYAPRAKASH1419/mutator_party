@@ -67,4 +67,6 @@ export class RoomState extends Schema {
   @type(CrownSchema) crown = new CrownSchema();
   @type("uint32") arenaSeed: number = 0;
   @type("string") settingsHash: string = "";
+  @type("uint16") crumbleTilesBitmask: number = 0; // bit i = 1 if tile i is fallen
+  @type("uint16") crumbleWarnBitmask: number = 0;  // bit i = 1 if tile i is warning
 }

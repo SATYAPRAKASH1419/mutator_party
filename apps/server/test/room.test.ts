@@ -249,4 +249,109 @@ describe("GameRoom", () => {
     // After timeout, Bob is removed and Alice remains host
     expect(room.state.players.has("s2")).toBe(false);
   });
+
+  it("initializes mode and twist state correctly on round start (GAP-01, GAP-02, GAP-09)", () => {
+    const room = new GameRoom();
+    room.onCreate({});
+
+    const client1 = { sessionId: "s1", send: vi.fn() } as any;
+    const client2 = { sessionId: "s2", send: vi.fn() } as any;
+    (room as any).clients = [client1, client2];
+
+    room.onJoin(client1, {}, { name: "Alice", playerId: "p1" });
+    room.onJoin(client2, {}, { name: "Bob", playerId: "p2" });
+
+    // Test Bomb mode setup
+    (room as any).handleRoundStart({
+      roundNumber: 1,
+      mode: "bomb",
+      theme: "neon",
+      twists: ["tiny", "crumble"],
+      seed: 99999,
+    });
+
+    expect(room.simState).toBeDefined();
+    expect(room.simState?.bomb).toBeDefined();
+    expect(room.simState?.tileStates.length).toBeGreaterThan(0);
+    expect(room.simState?.nextCrumbleTime).toBeDefined();
+    // Verify tiny scale was synced to sim and schema
+    expect(room.simState?.players[0]?.scale).toBe(0.55);
+    expect(room.state.players.get("s1")?.scale).toBe(0.55);
+
+    // Test Crown mode setup
+    (room as any).handleRoundStart({
+      roundNumber: 2,
+      mode: "crown",
+      theme: "sunny",
+      twists: ["giant"],
+      seed: 88888,
+    });
+
+    expect(room.simState?.crown).toBeDefined();
+    expect(room.simState?.players[0]?.scale).toBe(1.7);
+    expect(room.state.players.get("s1")?.scale).toBe(1.7);
+  });
+
+  it("unicasts twist pick card options only to picker (GAP-06)", () => {
+    const room = new GameRoom();
+    room.onCreate({});
+
+    const sent1: any[] = [];
+    const sent2: any[] = [];
+    const client1 = { sessionId: "s1", send: (type: string, data: any) => sent1.push({ type, data }) } as any;
+    const client2 = { sessionId: "s2", send: (type: string, data: any) => sent2.push({ type, data }) } as any;
+    (room as any).clients = [client1, client2];
+
+    room.onJoin(client1, {}, { name: "Alice", playerId: "p1" });
+    room.onJoin(client2, {}, { name: "Bob", playerId: "p2" });
+
+    // Trigger onPickOffer with picker s1
+    (room.phaseController as any).callbacks.onPickOffer({
+      pickerId: "s1",
+      cards: ["low", "ice", "speed"],
+      isBot: false,
+      timeoutSec: 10,
+    });
+
+    // Picker s1 receives full cards
+    const offerForS1 = sent1.find((m) => m.type === "pick:offer");
+    expect(offerForS1?.data.cards).toEqual(["low", "ice", "speed"]);
+
+    // Non-picker s2 receives masked offer without cards
+    const offerForS2 = sent2.find((m) => m.type === "pick:offer");
+    expect(offerForS2?.data.cards).toEqual([]);
+    expect(offerForS2?.data.pickerId).toBe("s1");
+  });
+
+  it("allows host to change theme and twistPicker between rounds but locks gameplay settings (GAP-07)", () => {
+    const room = new GameRoom();
+    room.onCreate({});
+    room.broadcast = vi.fn();
+
+    const sent: any[] = [];
+    const client1 = { sessionId: "s1", send: (type: string, data: any) => sent.push({ type, data }) } as any;
+    (room as any).clients = [client1];
+    room.onJoin(client1, {}, { name: "Alice", playerId: "p1" });
+
+    // In results phase: allowed to update theme
+    room.state.phase = "results";
+    (room as any).onMessageEvents.emit("settings:update", client1, {
+      theme: { mode: "fixed", fixed: "neon" },
+    });
+    expect(room.settings.theme.fixed).toBe("neon");
+
+    // In results phase: rejected when updating match physics/rounds
+    (room as any).onMessageEvents.emit("settings:update", client1, {
+      match: { maxPlayers: 12 },
+    });
+    const lastErr = sent.find((m) => m.type === "error" && m.data.code === "SETTINGS_LOCKED");
+    expect(lastErr).toBeDefined();
+
+    // In play phase: all settings updates rejected
+    room.state.phase = "play";
+    (room as any).onMessageEvents.emit("settings:update", client1, {
+      theme: { fixed: "desert" },
+    });
+    expect(room.settings.theme.fixed).toBe("neon"); // not changed
+  });
 });

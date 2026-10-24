@@ -92,9 +92,18 @@ export function containsProfanity(raw: string): boolean {
   const normalized = normalizeText(raw);
 
   for (const word of PROFANITY_LIST) {
-    // Exact or substring match in directly cleaned or normalized forms
-    if (directLower.includes(word) || normalized.includes(word)) {
-      return true;
+    if (word.length <= 2) {
+      // For short slang tokens like 'mc' / 'bc', match standalone token boundaries to avoid
+      // false positives on common words (e.g. 'McQueen', 'Tomcat', 'abc', 'Broadcast')
+      const wordRegex = new RegExp(`(^|[^a-z0-9])${word}([^a-z0-9]|$)`, "i");
+      if (wordRegex.test(raw)) {
+        return true;
+      }
+    } else {
+      // Exact or substring match in directly cleaned or normalized forms
+      if (directLower.includes(word) || normalized.includes(word)) {
+        return true;
+      }
     }
   }
 

@@ -8,18 +8,30 @@ describe("Server Entry Point & Health Config", () => {
     expect(typeof appConfig.initializeExpress).toBe("function");
   });
 
-  it("registers /healthz route on express app", () => {
-    let healthRouteRegistered = false;
+  it("registers /healthz route on express app and returns status including rooms", async () => {
+    let handler: any = null;
     const dummyApp: any = {
-      get: (path: string, _handler: any) => {
+      get: (path: string, h: any) => {
         if (path === "/healthz") {
-          healthRouteRegistered = true;
+          handler = h;
         }
       },
     };
 
     appConfig.initializeExpress!(dummyApp);
-    expect(healthRouteRegistered).toBe(true);
+    expect(handler).toBeDefined();
+
+    let jsonResponse: any = null;
+    const dummyRes = {
+      json: (data: any) => {
+        jsonResponse = data;
+      },
+    };
+
+    await handler({}, dummyRes);
+    expect(jsonResponse).toHaveProperty("ok", true);
+    expect(jsonResponse).toHaveProperty("rooms");
+    expect(jsonResponse).toHaveProperty("uptime");
   });
 });
 

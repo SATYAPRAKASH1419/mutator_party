@@ -20,6 +20,10 @@ import {
   TICK_HZ,
   calculateRoundScores,
   RECONNECT_WINDOW_SEC,
+  initBrawl,
+  initBomb,
+  initCrown,
+  setupTwists,
 } from "@mutator-party/shared";
 import { RoomState, PlayerSchema, CrateSchema } from "./schema.js";
 import { generateRoomCode } from "../security/roomCode.js";
@@ -37,6 +41,7 @@ import { validateOrigin } from "../security/origin.js";
 import { roomLogger } from "../obs/logger.js";
 import {
   roomsCreatedCounter,
+  matchesCompletedCounter,
   activeRoomsGauge,
   activePlayersGauge,
   activeBotsGauge,
@@ -74,6 +79,7 @@ export class GameRoom extends Room<{
   creatorIp = "127.0.0.1";
   private simTimer?: { clear: () => void };
   private emptyTimeout?: { clear: () => void };
+  private botCount = 0;
 
   override onCreate(options: any) {
     if (getDrainingStatus()) {
@@ -82,6 +88,9 @@ export class GameRoom extends Room<{
 
     this.state = new RoomState();
     this.autoDispose = false;
+
+    // Set patch rate according to server config (GAP-12)
+    this.setPatchRate(1000 / (serverConfig.PATCH_HZ || 20));
 
     // Generate room code and publish in metadata for lookup (safe in unit tests)
     this.roomCode = generateRoomCode();
@@ -129,7 +138,29 @@ export class GameRoom extends Room<{
         },
         onRoundStart: (config) => this.handleRoundStart(config),
         onPickOffer: (offer) => {
-          this.broadcast("pick:offer", offer);
+          if (offer.pickerId === "vote") {
+            this.broadcast("pick:offer", offer);
+          } else {
+            // Unicast cards to the picker client only (GAP-06)
+            const pickerClient = this.clients.find(
+              (c) => c.sessionId === offer.pickerId,
+            );
+            if (pickerClient) {
+              pickerClient.send("pick:offer", offer);
+            }
+            // Notify other clients without revealing cards
+            const maskedOffer = {
+              pickerId: offer.pickerId,
+              cards: [],
+              isBot: offer.isBot,
+              timeoutSec: offer.timeoutSec,
+            };
+            this.clients.forEach((c) => {
+              if (c.sessionId !== offer.pickerId) {
+                c.send("pick:offer", maskedOffer);
+              }
+            });
+          }
         },
         onRoundEnd: (round) => this.handleRoundEnd(round),
         onMatchEnd: () => this.handleMatchEnd(),
@@ -274,6 +305,16 @@ export class GameRoom extends Room<{
   override onDispose() {
     this.stopSimLoop();
     activeRoomsGauge.dec();
+    if (this.botCount > 0) {
+      activeBotsGauge.dec(this.botCount);
+      this.botCount = 0;
+    }
+    const remainingHumans = Array.from(this.state.players.values()).filter(
+      (p) => !p.isBot,
+    ).length;
+    if (remainingHumans > 0) {
+      activePlayersGauge.dec(remainingHumans);
+    }
     globalRateLimiter.trackRoomDisposed(this.creatorIp, this.roomId);
     roomLogger.disposed(
       this.roomId,
@@ -425,6 +466,21 @@ export class GameRoom extends Room<{
       this.state.crates.push(crateSchema);
     }
 
+    // Sync crumble tile bitmasks to schema (GAP-09)
+    if (this.simState.tileStates && this.simState.tileStates.length > 0) {
+      let fallenMask = 0;
+      let warnMask = 0;
+      for (const t of this.simState.tileStates) {
+        if (t.fallen) {
+          fallenMask |= 1 << t.id;
+        } else if (t.state === "warn") {
+          warnMask |= 1 << t.id;
+        }
+      }
+      this.state.crumbleTilesBitmask = fallenMask;
+      this.state.crumbleWarnBitmask = warnMask;
+    }
+
     // 5. AFK Detection during play phase
     this.presenceManager.checkAFK(
       Date.now(),
@@ -482,6 +538,7 @@ export class GameRoom extends Room<{
 
   private handleMatchEnd() {
     this.stopSimLoop();
+    matchesCompletedCounter.inc();
     const standings = Array.from(this.state.players.values())
       .map((p) => ({
         id: p.id,
@@ -641,6 +698,27 @@ export class GameRoom extends Room<{
       botSkill: this.settings.match.botSkill,
       events: [],
     };
+
+    // 6. Initialize mode-specific state (GAP-01)
+    if (config.mode === "bomb") {
+      initBomb(this.simState, roundTime);
+    } else if (config.mode === "crown") {
+      initCrown(this.simState, roundTime);
+    } else {
+      initBrawl(this.simState, roundTime);
+    }
+
+    // 7. Initialize twists, scales & crumble tiles (GAP-02)
+    const twistRng = mulberry32(hashSeed(config.seed, 0, "twists_setup"));
+    setupTwists(this.simState, config.twists, twistRng);
+
+    // Sync modified player scales from twist setup to schema
+    for (const simP of this.simState.players) {
+      const schemaP = this.state.players.get(simP.id);
+      if (schemaP) {
+        schemaP.scale = simP.scale;
+      }
+    }
   }
 
   private isMessageValid(message: unknown): boolean {
@@ -683,12 +761,33 @@ export class GameRoom extends Room<{
         return;
       }
 
-      if (this.state.phase !== "lobby") {
+      if (this.state.phase === "play") {
         client.send("error", {
           code: "SETTINGS_LOCKED",
-          message: "Settings are locked during match.",
+          message: "Settings are locked during match play.",
         });
         return;
+      }
+
+      // Between rounds (results, pick, intro), only theme and twistPicker are editable (GAP-07)
+      if (this.state.phase !== "lobby") {
+        const partial = partialSettings as Record<string, any>;
+        const keys = Object.keys(partial || {});
+        const allowedMidMatch = keys.every(
+          (k) =>
+            k === "theme" ||
+            (k === "modes" &&
+              Object.keys(partial.modes || {}).every(
+                (mk) => mk === "twistPicker",
+              )),
+        );
+        if (!allowedMidMatch) {
+          client.send("error", {
+            code: "SETTINGS_LOCKED",
+            message: "Only theme and twist picker can change between rounds.",
+          });
+          return;
+        }
       }
 
       this.settings = sanitize(partialSettings, this.settings);
@@ -750,7 +849,10 @@ export class GameRoom extends Room<{
           }
           botIndex++;
         }
-        activeBotsGauge.set(addedBots);
+        if (addedBots > 0) {
+          activeBotsGauge.inc(addedBots);
+          this.botCount += addedBots;
+        }
       }
 
       this.phaseController.startMatch(this.getPlayerSummaries());

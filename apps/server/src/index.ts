@@ -5,7 +5,7 @@
 import config, { listen } from "@colyseus/tools";
 import { GameRoom } from "./rooms/GameRoom.js";
 import { config as serverConfig } from "./config.js";
-import { metricsRegistry } from "./obs/metrics.js";
+import { metricsRegistry, activeRoomsGauge } from "./obs/metrics.js";
 import { logger } from "./obs/logger.js";
 import { initSentry } from "./obs/sentry.js";
 
@@ -24,14 +24,16 @@ export function setDrainingStatus(val: boolean): void {
 
 export const appConfig = config({
   initializeGameServer: (gameServer) => {
-    gameServer.define("game", GameRoom);
+    gameServer.define("game", GameRoom).filterBy(["code"]);
   },
   initializeExpress: (app) => {
     // Health check endpoint (N9 / Step 3)
-    app.get("/healthz", (_req: any, res: any) => {
+    app.get("/healthz", async (_req: any, res: any) => {
+      const activeRooms = (await activeRoomsGauge.get()).values[0]?.value ?? 0;
       res.json({
         ok: true,
         draining: isDraining,
+        rooms: activeRooms,
         uptime: process.uptime(),
       });
     });

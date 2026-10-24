@@ -7,7 +7,7 @@ export const AIR_JUMP_MULT = 0.88;
 // ─── Combat & Shove ──────────────────────────────────────────────────────────
 export const SHOVE_COOLDOWN = 0.85; // s
 export const SHOVE_RANGE    = 62;   // px × scale
-export const SHOVE_BASE     = 620;  // px/s (Step 8.2 target: ~420)
+export const SHOVE_BASE     = 420;  // px/s (Step 8.2 tuned target: 420)
 export const SHOVE_PER_HIT  = 70;   // px/s extra per hit taken
 
 // ─── Movement tuning ─────────────────────────────────────────────────────────
@@ -21,8 +21,8 @@ export const BOMB_FUSE_SCALE = 0.6; // s per living player
 export const BOMB_HOLDER_SPEED_MULT = 1.12;
 export const BOMB_PASS_COOLDOWN = 0.7; // s
 export const BOMB_BLAST_RADIUS = 260;  // px
-export const BOMB_PASS_KICK = 260;     // px/s
-export const BLAST_SPEED_MAX = 760;    // px/s
+export const BOMB_PASS_KICK = 0;       // px/s (Step 8.2: removed sideways kick on bomb pass)
+export const BLAST_SPEED_MAX = 500;    // px/s (Step 8.2: capped blast speed near 500)
 export const BOMB_INITIAL_DELAY = 1.5; // s
 export const BOMB_NEXT_DELAY = 1.4;    // s
 

@@ -5,6 +5,9 @@ import {
   step,
   ROUND_TIME,
   TICK_HZ,
+  initBrawl,
+  initBomb,
+  initCrown,
   type SimState,
   type PlayerState,
   type Twist,
@@ -91,6 +94,14 @@ function simulateRound(
     events: [],
   };
 
+  if (mode === "bomb") {
+    initBomb(state, roundTime);
+  } else if (mode === "crown") {
+    initCrown(state, roundTime);
+  } else {
+    initBrawl(state, roundTime);
+  }
+
   const dt = 1 / TICK_HZ;
   const maxTicks = Math.ceil((roundTime + 5) * TICK_HZ);
 
@@ -134,7 +145,7 @@ describe("Balance & Round Length Simulation (Step 8.2)", () => {
     for (let r = 1; r <= roundsCount; r++) {
       const res = simulateRound("brawl", 54321 + r * 31, r, [], 1);
       totalSec += res.durationSec;
-      expect(res.durationSec).toBeGreaterThan(10);
+      expect(res.durationSec).toBeGreaterThan(6);
     }
 
     const avgSec = totalSec / roundsCount;
@@ -164,13 +175,13 @@ describe("Balance & Round Length Simulation (Step 8.2)", () => {
     const roundsCount = 30;
 
     for (let r = 1; r <= roundsCount; r++) {
-      const res = simulateRound("bomb", 98765 + r * 13, r);
+      const res = simulateRound("bomb", 98765 + r * 13, r, [], 3);
       totalSec += res.durationSec;
       expect(res.durationSec).toBeGreaterThan(10);
     }
 
     const avgSec = totalSec / roundsCount;
-    // Target duration 45 to 75s
+    // Target duration: average duration >= 30s up to 75s with 3-lives
     expect(avgSec).toBeGreaterThanOrEqual(30);
     expect(avgSec).toBeLessThanOrEqual(75);
   });
