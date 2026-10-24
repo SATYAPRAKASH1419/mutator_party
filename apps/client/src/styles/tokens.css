@@ -1,0 +1,60 @@
+:root {
+  /* Brand & UI Palette (Sticker Pop) */
+  --mp-ink: #1B1B3A;
+  --mp-paper: #FFF8E7;
+  --mp-butter: #FFF3D6;
+  --mp-night: #17172E;
+  --mp-muted: #55557A;
+  --mp-sun: #FFC93C;
+  --mp-mint: #3DDC97;
+  --mp-coral: #FF6B6B;
+  --mp-grape: #8B5CF6;
+  --mp-danger: #FF4D4D;
+  --mp-shield: #7DD3FC;
+  --mp-gold-glow: #F59E0B;
+
+  /* Theme Sky & Surfaces */
+  --mp-sky-top: #8EDBFF;
+  --mp-sky-bot: #C8F0FF;
+  --mp-page-bg: var(--mp-butter);
+  --mp-text: var(--mp-ink);
+
+  /* Player Order Colors */
+  --p-color-0: #FF6B6B;
+  --p-color-1: #3DDC97;
+  --p-color-2: #8B5CF6;
+  --p-color-3: #FFC93C;
+  --p-color-4: #4CC9F0;
+  --p-color-5: #FF9F1C;
+  --p-color-6: #F15BB5;
+  --p-color-7: #2EC4B6;
+
+  /* Geometry & Outlines */
+  --mp-outline: 3px solid var(--mp-ink);
+  --mp-outline-thick: 4px solid var(--mp-ink);
+  --mp-shadow: 6px 7px 0px var(--mp-ink);
+  --mp-shadow-sm: 3px 4px 0px var(--mp-ink);
+  --mp-shadow-pressed: 1px 1px 0px var(--mp-ink);
+
+  --mp-radius-panel: 18px;
+  --mp-radius-chip: 9999px;
+  --mp-radius-btn: 9999px;
+  --mp-radius-player: 32%;
+
+  /* Fonts */
+  --font-display: "Bagel Fat One", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --font-body: "Nunito", system-ui, -apple-system, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --mp-page-bg: var(--mp-night);
+    --mp-text: var(--mp-paper);
+    --mp-muted: #9E9EB8;
+  }
+}
+:root[data-theme="dark"] {
+  --mp-page-bg: var(--mp-night);
+  --mp-text: var(--mp-paper);
+  --mp-muted: #9E9EB8;
+}
