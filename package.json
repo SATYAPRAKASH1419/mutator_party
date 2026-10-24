@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "pnpm -r test",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "dev:server": "pnpm --filter @mutator-party/server dev",
+    "start:server": "pnpm --filter @mutator-party/server start"
   },
   "keywords": [],
   "author": "",

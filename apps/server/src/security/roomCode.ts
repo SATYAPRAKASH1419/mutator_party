@@ -1,7 +1,8 @@
 import { randomInt } from "node:crypto";
+import { CODE_ALPHABET, CODE_LENGTH } from "@mutator-party/shared";
 
-export const ROOM_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-export const ROOM_CODE_LENGTH = 5;
+export const ROOM_CODE_ALPHABET = CODE_ALPHABET;
+export const ROOM_CODE_LENGTH = CODE_LENGTH;
 
 export const ROOM_UNAVAILABLE_ERROR = {
   code: "ROOM_UNAVAILABLE",
@@ -24,7 +25,6 @@ export function generateRoomCode(): string {
  * Validates and normalizes a candidate room code.
  * Returns normalized uppercase code if valid, null if invalid.
  */
-
 export function normalizeRoomCode(input: unknown): string | null {
   if (typeof input !== "string") return null;
   const cleaned = input.trim().toUpperCase();

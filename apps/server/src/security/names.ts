@@ -1,3 +1,5 @@
+import { containsProfanity } from "./profanity.js";
+
 export const RESERVED_NAMES = new Set([
   "you",
   "host",
@@ -74,6 +76,22 @@ export function validatePlayerName(raw: unknown): NameValidationResult {
     };
   }
 
+  // 6. Profanity check (English + Hinglish with leetspeak normalization)
+  if (containsProfanity(trimmed)) {
+    return {
+      valid: false,
+      error: "Name contains prohibited or offensive language.",
+    };
+  }
+
+  // 6. Profanity check (English + Hinglish with leetspeak normalization)
+  if (containsProfanity(trimmed)) {
+    return {
+      valid: false,
+      error: "Name contains prohibited or offensive language.",
+    };
+  }
+
   return { valid: true, name: trimmed };
 }
 
@@ -96,3 +114,4 @@ export function deduplicatePlayerName(
   }
   return `${name} #${counter}`;
 }
+
