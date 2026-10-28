@@ -264,6 +264,7 @@ export function PlayerSlotCard({
         className="mp-pod-top-stripe"
         style={{ background: colorHex }}
       />
+
       {canKick && onKick && (
         <button
           type="button"

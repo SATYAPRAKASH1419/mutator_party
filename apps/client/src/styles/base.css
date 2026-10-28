@@ -1,4 +1,7 @@
 @import './tokens.css';
+@import './landing.css';
+@import './lobby.css';
+@import './settings.css';
 
 *, *::before, *::after {
   box-sizing: border-box;

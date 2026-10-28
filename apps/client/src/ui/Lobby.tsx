@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "preact/hooks";
+import { useState, useMemo } from "preact/hooks";
 import { PLAYER_COLORS, type RoomSettings } from "@mutator-party/shared";
 import type { PlayerClientState } from "../app/store";
 
@@ -9,6 +9,7 @@ import { clientLog } from "../util/logger";
 import { LobbyActions } from "./lobby/LobbyActions";
 import { BannerAd } from "./components/BannerAd";
 import { RulesModal } from "./lobby/RulesModal";
+import { useLobbyEmotes } from "./lobby/useLobbyEmotes";
 
 interface LobbyProps {
   roomCode: string;
@@ -37,7 +38,6 @@ export function Lobby({
 }: LobbyProps) {
   const [isReady, setIsReady] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
-  const [playerEmotes, setPlayerEmotes] = useState<Record<string, { emoji: string; key: number }>>({});
 
   const handleToggle = () => {
     clientLog.action("Lobby ready button clicked", { nextReady: !isReady });
@@ -60,7 +60,6 @@ export function Lobby({
   // Prepare 8 player/bot slots for 1x8 lineup row
   const actualPlayers = players && players.length > 0 ? players : [];
   const displaySlots: SlotItem[] = useMemo(() => {
-    // If no players yet in state, show fallback host so slot is never empty
     const effectivePlayers: Array<{ id?: string; name?: string; color?: number }> =
       actualPlayers.length > 0
         ? actualPlayers
@@ -81,8 +80,6 @@ export function Lobby({
         const readyStatus = isPlayerHost ? true : ((p as any).ready ?? isReady);
         const canKick = isHost && !isPlayerHost;
 
-        const activeEmoteData = playerEmotes[slotId];
-
         slots.push({
           type: "player",
           id: slotId,
@@ -91,8 +88,7 @@ export function Lobby({
           isHost: isPlayerHost,
           isReady: readyStatus,
           canKick,
-          activeEmote: activeEmoteData?.emoji || null,
-          activeEmoteKey: activeEmoteData?.key,
+          activeEmote: null,
         });
       } else {
         slots.push({
@@ -102,52 +98,25 @@ export function Lobby({
       }
     }
     return slots;
-  }, [actualPlayers, isHost, isReady, playerEmotes]);
+  }, [actualPlayers, isHost, isReady]);
 
-  // Handle Emote trigger (Option 1: Pop speech bubble on local player's card)
-  const handleLocalEmote = (emoji: string) => {
-    const localId = displaySlots[0]?.id || "host_local";
-    const newKey = Date.now() + Math.floor(Math.random() * 1000);
-    setPlayerEmotes((prev) => ({ ...prev, [localId]: { emoji, key: newKey } }));
-    onEmote(emoji);
+  const { playerEmotes, handleLocalEmote } = useLobbyEmotes(displaySlots, onEmote);
 
-    setTimeout(() => {
-      setPlayerEmotes((prev) => {
-        if (prev[localId]?.key === newKey) {
-          const next = { ...prev };
-          delete next[localId];
-          return next;
-        }
-        return prev;
-      });
-    }, 2400);
-  };
-
-  useEffect(() => {
-    const onRemoteEmote = (e: any) => {
-      const detail = e.detail;
-      if (!detail?.id) return;
-      const targetSlot = displaySlots.find((s) => s.id === detail.playerId) || displaySlots[0];
-      const slotId = targetSlot ? targetSlot.id : (displaySlots[0]?.id || "host_local");
-      const newKey = Date.now() + Math.floor(Math.random() * 1000);
-      setPlayerEmotes((prev) => ({ ...prev, [slotId]: { emoji: detail.id, key: newKey } }));
-      setTimeout(() => {
-        setPlayerEmotes((prev) => {
-          if (prev[slotId]?.key === newKey) {
-            const next = { ...prev };
-            delete next[slotId];
-            return next;
-          }
-          return prev;
-        });
-      }, 2400);
-    };
-    window.addEventListener("mp:emote", onRemoteEmote);
-    return () => window.removeEventListener("mp:emote", onRemoteEmote);
-  }, [displaySlots]);
+  // Attach active emote data to display slots
+  const enrichedSlots: SlotItem[] = useMemo(() => {
+    return displaySlots.map((slot) => {
+      const activeEmoteData = playerEmotes[slot.id];
+      if (!activeEmoteData) return slot;
+      return {
+        ...slot,
+        activeEmote: activeEmoteData.emoji,
+        activeEmoteKey: activeEmoteData.key,
+      };
+    });
+  }, [displaySlots, playerEmotes]);
 
   // Count unready guests
-  const unreadyGuests = displaySlots.filter(
+  const unreadyGuests = enrichedSlots.filter(
     (s) => s.type === "player" && !s.isHost && !s.isReady,
   ).length;
 
@@ -347,7 +316,7 @@ export function Lobby({
             </div>
 
             {/* 1x8 Character Lineup Podium */}
-            <PlayerGrid slots={displaySlots} fillBots={fillBots} onKick={onKick} />
+            <PlayerGrid slots={enrichedSlots} fillBots={fillBots} onKick={onKick} />
 
             {/* Centered Arcade Reaction Deck */}
             <QuickEmotesBar onEmote={handleLocalEmote} />
@@ -380,7 +349,10 @@ export function Lobby({
           settings={settings}
           isHost={isHost}
           onClose={() => setShowRulesModal(false)}
-          onEditSettings={onEditRules}
+          onEditSettings={() => {
+            setShowRulesModal(false);
+            if (isHost && onEditRules) onEditRules();
+          }}
         />
       )}
     </div>

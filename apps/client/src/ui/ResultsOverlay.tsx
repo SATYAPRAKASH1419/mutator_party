@@ -1,7 +1,7 @@
 import { useEffect } from "preact/hooks";
-import { PLAYER_COLORS } from "@mutator-party/shared";
 import type { PlayerClientState } from "../app/store";
 import { IconExit, IconRefresh, IconArrowRight } from "./components/Icons";
+import { PlayerStandingRow } from "./results/PlayerStandingRow";
 
 interface ResultsOverlayProps {
   isFinal: boolean;
@@ -99,23 +99,26 @@ export function ResultsOverlay({
           </>
         ) : (
           <>
+            <span style={{ fontSize: "16px", fontWeight: 900, color: "var(--mp-muted)" }}>
+              Round {round} &middot; {modeName}
+            </span>
             <span
               style={{
                 fontFamily: "var(--font-display)",
                 fontSize: "36px",
-                color: "var(--mp-ink)",
+                color: "var(--mp-sun)",
+                WebkitTextStroke: "2px var(--mp-ink)",
+                paintOrder: "stroke fill",
+                textShadow: "0 4px 0 var(--mp-ink)",
                 lineHeight: 1.1,
               }}
             >
-              Round {round} results
-            </span>
-            <span style={{ fontSize: "14px", fontWeight: 900, color: "var(--mp-muted)" }}>
-              {modeName}
+              Standings
             </span>
           </>
         )}
 
-        {/* Standings Table with pts & total headers */}
+        {/* Score Table */}
         <div style={{ width: "100%", marginTop: "10px" }}>
           <div
             style={{
@@ -142,71 +145,15 @@ export function ResultsOverlay({
               overflowY: "auto",
             }}
           >
-            {sorted.map((p, idx) => {
-              const isLocal = p.id === localPlayerId;
-              const colorHex =
-                PLAYER_COLORS[p.color % PLAYER_COLORS.length] || "#FF6B6B";
-              return (
-                <div
-                  key={p.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "6px 14px",
-                    borderRadius: "9999px",
-                    backgroundColor: isLocal ? "#FFE58F" : "transparent",
-                    border: isLocal ? "2px solid var(--mp-ink)" : "2px solid transparent",
-                    fontWeight: 900,
-                    fontSize: "15px",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span style={{ width: "18px", color: "var(--mp-ink)" }}>{idx + 1}</span>
-                    <div
-                      style={{
-                        width: "14px",
-                        height: "14px",
-                        borderRadius: "50%",
-                        backgroundColor: colorHex,
-                        border: "2px solid var(--mp-ink)",
-                        flexShrink: 0,
-                      }}
-                    />
-                    <span style={{ color: "var(--mp-ink)" }}>
-                      {isLocal ? "You" : p.name}
-                    </span>
-                  </div>
-
-                  <div style={{ display: "flex", gap: "24px" }}>
-                    {!isFinal && (
-                      <span
-                        style={{
-                          width: "36px",
-                          textAlign: "right",
-                          color: "var(--mp-mint)",
-                          fontFamily: "var(--font-display)",
-                          fontSize: "16px",
-                        }}
-                      >
-                        +{Math.max(0, 8 - idx)}
-                      </span>
-                    )}
-                    <span
-                      style={{
-                        width: "36px",
-                        textAlign: "right",
-                        fontFamily: "var(--font-display)",
-                        fontSize: "18px",
-                        color: "var(--mp-ink)",
-                      }}
-                    >
-                      {p.score}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+            {sorted.map((p, idx) => (
+              <PlayerStandingRow
+                key={p.id}
+                player={p}
+                index={idx}
+                localPlayerId={localPlayerId}
+                isFinal={isFinal}
+              />
+            ))}
           </div>
         </div>
 
@@ -220,62 +167,83 @@ export function ResultsOverlay({
               marginBottom: "8px",
             }}
           >
-            {isFinal
-              ? "Tap or press Space to play again"
-              : "Tap or press Space to continue"}
+            {isHost
+              ? "Press Space or click button to continue"
+              : "Waiting for host to continue..."}
           </div>
 
-          <div style={{ display: "flex", gap: "10px", width: "100%", justifyContent: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "12px",
+              flexWrap: "wrap",
+            }}
+          >
             {onLeave && (
               <button
                 type="button"
                 className="mp-btn"
                 onClick={onLeave}
                 style={{
-                  background: "var(--mp-coral)",
-                  padding: "8px 20px",
-                  display: "inline-flex",
+                  background: "var(--mp-paper)",
+                  color: "var(--mp-ink)",
+                  padding: "8px 18px",
+                  fontSize: "14px",
+                  fontWeight: 900,
+                  display: "flex",
                   alignItems: "center",
                   gap: "6px",
                 }}
               >
-                <IconExit size={15} />
+                <IconExit size={16} />
                 <span>Leave</span>
               </button>
             )}
-            {isFinal && onRematch && (
-              <button
-                type="button"
-                className="mp-btn"
-                onClick={onRematch}
-                style={{
-                  background: "var(--mp-mint)",
-                  padding: "8px 26px",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                <span>Rematch</span>
-                <IconRefresh size={15} />
-              </button>
-            )}
-            {!isFinal && isHost && onNextRound && (
-              <button
-                type="button"
-                className="mp-btn"
-                onClick={onNextRound}
-                style={{
-                  background: "var(--mp-mint)",
-                  padding: "8px 26px",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                <span>Next Round</span>
-                <IconArrowRight size={15} />
-              </button>
+
+            {isFinal ? (
+              isHost && onRematch && (
+                <button
+                  type="button"
+                  className="mp-btn"
+                  onClick={onRematch}
+                  style={{
+                    background: "var(--mp-mint)",
+                    color: "var(--mp-ink)",
+                    padding: "10px 24px",
+                    fontSize: "16px",
+                    fontWeight: 900,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <IconRefresh size={18} />
+                  <span>Rematch (Space)</span>
+                </button>
+              )
+            ) : (
+              isHost && onNextRound && (
+                <button
+                  type="button"
+                  className="mp-btn"
+                  onClick={onNextRound}
+                  style={{
+                    background: "var(--mp-sun)",
+                    color: "var(--mp-ink)",
+                    padding: "10px 24px",
+                    fontSize: "16px",
+                    fontWeight: 900,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <span>Next Round (Space)</span>
+                  <IconArrowRight size={18} />
+                </button>
+              )
             )}
           </div>
         </div>

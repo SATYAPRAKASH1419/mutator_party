@@ -1,6 +1,6 @@
 import { useMemo } from "preact/hooks";
 import { THEMES, type RoomSettings } from "@mutator-party/shared";
-import { IconClose, IconSettings, IconRules } from "@/ui/components/Icons";
+import { IconClose, IconSettings, IconRules } from "../components/Icons";
 
 interface RulesModalProps {
   settings: Partial<RoomSettings> | null;
@@ -129,75 +129,90 @@ export function RulesModal({
           font-size: 20px;
           font-weight: 900;
           color: var(--mp-ink, #1B1B3A);
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
 
-        .mp-rules-modal-close {
+        .mp-modal-close-btn {
           width: 32px;
           height: 32px;
           border-radius: 50%;
+          background: #FFFFFF;
           border: 2px solid var(--mp-ink, #1B1B3A);
-          background: #FFE8E8;
-          color: #DC2626;
-          font-weight: 900;
-          font-size: 14px;
-          cursor: pointer;
+          box-shadow: 1.5px 2px 0 var(--mp-ink, #1B1B3A);
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 1.5px 2px 0 var(--mp-ink, #1B1B3A);
+          cursor: pointer;
+          color: var(--mp-ink, #1B1B3A);
+          transition: transform 0.1s ease;
+        }
+        .mp-modal-close-btn:hover {
+          transform: translateY(-1px);
         }
 
         .mp-modal-rule-row {
           display: flex;
-          justify-content: space-between;
           align-items: center;
-          padding: 6px 0;
-          border-bottom: 1.5px solid rgba(27, 27, 58, 0.08);
-          font-size: 13px;
-          font-weight: 800;
+          justify-content: space-between;
+          padding: 7px 0;
+          border-bottom: 1.5px dashed rgba(27, 27, 58, 0.12);
+          font-size: 13.5px;
         }
 
         .mp-modal-rule-label {
           color: #64748B;
+          font-weight: 700;
         }
 
         .mp-modal-rule-val {
           color: var(--mp-ink, #1B1B3A);
+          font-weight: 900;
+          text-align: right;
         }
       `}</style>
-
       <div
         className="mp-rules-modal-card"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mp-rules-modal-header">
-          <div className="mp-rules-modal-title" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div className="mp-rules-modal-title">
             <IconRules size={20} />
-            <span>Room Rules</span>
+            <span>Room Game Rules</span>
           </div>
           <button
             type="button"
-            className="mp-rules-modal-close"
+            className="mp-modal-close-btn"
             onClick={onClose}
             title="Close"
           >
-            <IconClose size={14} />
+            <IconClose size={16} />
           </button>
         </div>
 
         <div className="mp-modal-rule-row">
           <span className="mp-modal-rule-label">Match Length</span>
-          <span className="mp-modal-rule-val">{rounds} rounds ({roundTime === "auto" ? "Auto" : `${roundTime}s`})</span>
+          <span className="mp-modal-rule-val">{rounds} Rounds</span>
         </div>
 
         <div className="mp-modal-rule-row">
-          <span className="mp-modal-rule-label">Game Modes</span>
+          <span className="mp-modal-rule-label">Round Duration</span>
+          <span className="mp-modal-rule-val">
+            {roundTime === "auto" ? "Auto (Game Mode Default)" : `${roundTime}s`}
+          </span>
+        </div>
+
+        <div className="mp-modal-rule-row">
+          <span className="mp-modal-rule-label">Game Modes In Pool</span>
           <span className="mp-modal-rule-val">{modeIcons}</span>
         </div>
 
         <div className="mp-modal-rule-row">
           <span className="mp-modal-rule-label">Twists & Hazards</span>
-          <span className="mp-modal-rule-val">{twistsCount} on ({twistRampText})</span>
+          <span className="mp-modal-rule-val">
+            {twistsCount} allowed ({twistRampText})
+          </span>
         </div>
 
         <div className="mp-modal-rule-row">
@@ -264,4 +279,3 @@ export function RulesModal({
     </div>
   );
 }
-

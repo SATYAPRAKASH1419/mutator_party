@@ -301,7 +301,7 @@ export class ColyseusRoomConnection implements RoomConnection {
       mode: state.mode || "brawl",
       twists: state.twists ? Array.from(state.twists) : [],
       themeId: state.themeId || "sunny",
-      timeLeft: state.timeLeft ?? 0,
+      timeLeft: Math.max(0, Math.ceil(state.timeLeft ?? 0)),
       players: playersList,
       crates: cratesList,
       bomb: bombState,
