@@ -61,7 +61,7 @@ export function Hud({
             color: "var(--mp-ink)",
           }}
         >
-          Round {round}/5
+          Round {round}/{gameState?.maxRounds ?? 5}
         </div>
 
         {/* Mode Pill */}

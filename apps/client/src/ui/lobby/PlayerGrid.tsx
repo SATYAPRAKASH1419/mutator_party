@@ -10,14 +10,17 @@ export interface SlotItem {
   isReady?: boolean;
   activeEmote?: string | null;
   activeEmoteKey?: number;
+  canKick?: boolean;
+  onKick?: (playerId: string) => void;
 }
 
 interface PlayerGridProps {
   slots: SlotItem[];
   fillBots: boolean;
+  onKick?: (playerId: string) => void;
 }
 
-export function PlayerGrid({ slots, fillBots }: PlayerGridProps) {
+export function PlayerGrid({ slots, fillBots, onKick }: PlayerGridProps) {
   return (
     <div className="mp-lineup-stage">
       <style>{`
@@ -56,6 +59,8 @@ export function PlayerGrid({ slots, fillBots }: PlayerGridProps) {
               isReady={Boolean(slot.isReady)}
               activeEmote={slot.activeEmote}
               activeEmoteKey={slot.activeEmoteKey}
+              canKick={slot.canKick}
+              onKick={onKick ? () => onKick(slot.id) : undefined}
             />
           );
         }

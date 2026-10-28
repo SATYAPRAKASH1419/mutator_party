@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import config, { listen } from "@colyseus/tools";
+import { matchMaker } from "colyseus";
 import { GameRoom } from "./rooms/GameRoom.js";
 import { config as serverConfig } from "./config.js";
 import { metricsRegistry, activeRoomsGauge } from "./obs/metrics.js";
@@ -20,6 +21,24 @@ export function getDrainingStatus(): boolean {
 
 export function setDrainingStatus(val: boolean): void {
   isDraining = val;
+}
+
+// Compatibility bridge: Colyseus 0.18 seat reservation is flat { name, roomId, sessionId },
+// but colyseus.js expects response.room.name and response.room.roomId.
+if (matchMaker?.controller?.invokeMethod) {
+  const origInvoke = matchMaker.controller.invokeMethod.bind(matchMaker.controller);
+  matchMaker.controller.invokeMethod = async function (method: any, roomName: any, clientOptions?: any, authOptions?: any) {
+    const res: any = await origInvoke(method, roomName, clientOptions, authOptions);
+    if (res && !res.room && res.name) {
+      res.room = {
+        name: res.name,
+        roomId: res.roomId,
+        processId: res.processId,
+        publicAddress: res.publicAddress,
+      };
+    }
+    return res;
+  };
 }
 
 export const appConfig = config({

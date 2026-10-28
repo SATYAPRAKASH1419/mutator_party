@@ -1,10 +1,13 @@
 import { useState, useEffect } from "preact/hooks";
+import { clientLog } from "../util/logger";
 import { TWISTS, type Twist } from "@mutator-party/shared";
 
 interface PickOverlayProps {
   onPick: (index: 0 | 1 | 2) => void;
   isPicker: boolean;
   pickerName?: string;
+  cards?: string[];
+  timeoutSec?: number;
 }
 
 const TWIST_CARDS: Record<string, { name: string; tag: string; icon: string }> = {
@@ -23,13 +26,15 @@ const TWIST_CARDS: Record<string, { name: string; tag: string; icon: string }> =
   bounce: { name: "Trampoline Land", tag: "Land and you spring", icon: "🦘" },
 };
 
-export function PickOverlay({ onPick, isPicker, pickerName = "Last Place" }: PickOverlayProps) {
-  const [countdown, setCountdown] = useState(10);
-  const [cards] = useState<string[]>(() => {
-    // Pick 3 distinct random twists
-    const shuffled = [...TWISTS].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, 3);
-  });
+export function PickOverlay({
+  onPick,
+  isPicker,
+  pickerName = "Last Place",
+  cards: propCards,
+  timeoutSec = 10,
+}: PickOverlayProps) {
+  const [countdown, setCountdown] = useState(timeoutSec);
+  const cards = propCards && propCards.length > 0 ? propCards : ["speed", "low", "crumble"];
 
   useEffect(() => {
     const timer = setInterval(() => {

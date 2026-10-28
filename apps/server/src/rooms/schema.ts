@@ -55,6 +55,7 @@ export class CrownSchema extends Schema {
 }
 
 export class RoomState extends Schema {
+  @type("string") roomCode: string = "";
   @type("string") phase: string = "lobby"; // 'lobby' | 'intro' | 'pick' | 'play' | 'results' | 'final'
   @type("uint8") round: number = 0;
   @type("string") mode: string = "brawl"; // 'brawl' | 'bomb' | 'crown'
@@ -68,5 +69,5 @@ export class RoomState extends Schema {
   @type("uint32") arenaSeed: number = 0;
   @type("string") settingsHash: string = "";
   @type("uint16") crumbleTilesBitmask: number = 0; // bit i = 1 if tile i is fallen
-  @type("uint16") crumbleWarnBitmask: number = 0;  // bit i = 1 if tile i is warning
+  @type("uint16") crumbleWarnBitmask: number = 0; // bit i = 1 if tile i is warning
 }

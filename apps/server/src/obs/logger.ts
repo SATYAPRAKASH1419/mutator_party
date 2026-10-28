@@ -40,5 +40,10 @@ export const roomLogger = {
   rateLimitExceeded: (ip: string, action: "join" | "creation" | "input") => {
     logger.warn({ event: "rate_limit_exceeded", ip, action });
   },
+  action: (roomId: string, roomCode: string, action: string, details?: Record<string, unknown>) => {
+    logger.info({ event: "client_action", roomId, roomCode, action, ...details });
+  },
+  phaseChange: (roomId: string, roomCode: string, fromPhase: string, toPhase: string) => {
+    logger.info({ event: "phase_change", roomId, roomCode, fromPhase, toPhase });
+  },
 };
-

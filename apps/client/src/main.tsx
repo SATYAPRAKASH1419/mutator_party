@@ -1,7 +1,7 @@
 import { render } from "preact";
 import { useState, useEffect } from "preact/hooks";
 import "./styles/base.css";
-import { initAutoFullscreenOnMobile } from "./util/fullscreen";
+import { initAutoFullscreenOnMobile, preventTouchSelectionOnHold } from "./util/fullscreen";
 import { PortraitRotateSplash } from "./ui/PortraitRotateSplash";
 import { TapToContinueOverlay } from "./ui/TapToContinueOverlay";
 import { appStore, type AppStoreState, type RoomClientState } from "./app/store";
@@ -19,12 +19,24 @@ import type { RoomSettings } from "@mutator-party/shared";
 import { Toast } from "./ui/components/Toast";
 import { showToast } from "./util/toast";
 import { IconSpinner } from "./ui/components/Icons";
+import { sound } from "./game/audio";
+import { clientLog } from "./util/logger";
 
 function App() {
   const [storeState, setStoreState] = useState<AppStoreState>(appStore.getState());
   const [connection, setConnection] = useState<RoomConnection | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [pickOffer, setPickOffer] = useState<{
+    pickerId: string;
+    cards: string[];
+    isBot: boolean;
+    timeoutSec: number;
+  } | null>(null);
+
+  useEffect(() => {
+    sound.setMuted(isMuted);
+  }, [isMuted]);
 
   useEffect(() => {
     return appStore.subscribe(setStoreState);
@@ -33,6 +45,11 @@ function App() {
   // Auto-enable fullscreen on first mobile tap/interaction
   useEffect(() => {
     return initAutoFullscreenOnMobile();
+  }, []);
+
+  // Prevent blue selection boxes and context menus on touch hold for small devices
+  useEffect(() => {
+    return preventTouchSelectionOnHold();
   }, []);
 
   // Check URL for join link: /r/:code
@@ -45,6 +62,7 @@ function App() {
   }, []);
 
   const handleConnect = async (opts: ConnectOptions) => {
+    clientLog.action("Initiate room connection", opts);
     setIsConnecting(true);
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -72,6 +90,7 @@ function App() {
         }
       }
 
+      clientLog.net("Connected successfully to room", { roomCode: result.roomCode, isHost: result.isHost });
       setConnection(conn);
 
       appStore.setState({
@@ -86,7 +105,36 @@ function App() {
         window.history.pushState(null, "", `/r/${result.roomCode}`);
       }
 
+      conn.on("roomInfo", (info: any) => {
+        clientLog.net("Received room:info", info);
+        appStore.setState({
+          roomCode: info.code,
+          isHost: info.isHost,
+          settings: info.settings || appStore.getState().settings,
+        });
+        if (info.code) {
+          window.history.pushState(null, "", `/r/${info.code}`);
+        }
+      });
+
+      conn.on("pickOffer", (offer: any) => {
+        clientLog.net("Received pick:offer", offer);
+        setPickOffer(offer);
+      });
+
+      conn.on("emote", (emoteData: any) => {
+        clientLog.net("Received emote", emoteData);
+        window.dispatchEvent(new CustomEvent("mp:emote", { detail: emoteData }));
+      });
+
       conn.on("state", (s: RoomClientState) => {
+        const prevPhase = appStore.getState().gameState?.phase;
+        if (prevPhase !== s.phase) {
+          clientLog.state("Phase transition", { from: prevPhase, to: s.phase, round: s.round, mode: s.mode });
+        }
+        if (s.phase !== "pick") {
+          setPickOffer(null);
+        }
         appStore.setState({ gameState: s });
 
         if (s.phase === "lobby") {
@@ -103,10 +151,12 @@ function App() {
       });
 
       conn.on("settings", (s: any) => {
+        clientLog.net("Received settings broadcast", s);
         appStore.setState({ settings: s });
       });
 
       conn.on("error", (e: { code: string; message: string }) => {
+        clientLog.error("Room error received", e);
         showToast(e.message || "Room error occurred.", "error");
       });
 
@@ -128,6 +178,7 @@ function App() {
   };
 
   const handleJoin = (code: string) => {
+    clientLog.action("Join room submit", { code });
     const profile = appStore.getState().profile;
     handleConnect({
       code,
@@ -138,6 +189,7 @@ function App() {
   };
 
   const handleCreateRoom = () => {
+    clientLog.action("Create room submit");
     const profile = appStore.getState().profile;
     handleConnect({
       create: true,
@@ -149,6 +201,7 @@ function App() {
   };
 
   const handleSaveSettings = (newSettings: Partial<RoomSettings>) => {
+    clientLog.action("Save room settings", newSettings);
     appStore.setState({ settings: newSettings });
     if (connection) {
       connection.send.settingsUpdate(newSettings);
@@ -157,24 +210,28 @@ function App() {
   };
 
   const handleStartGame = () => {
+    clientLog.action("Host clicked Start Game");
     if (connection) {
       connection.send.start();
     }
   };
 
   const handleToggleReady = (ready: boolean) => {
+    clientLog.action("Toggle ready status", { ready });
     if (connection) {
       connection.send.ready(ready);
     }
   };
 
   const handleEmote = (emoji: string) => {
+    clientLog.action("Send emote action", { emoji });
     if (connection) {
       connection.send.emote(emoji);
     }
   };
 
   const handleLeave = () => {
+    clientLog.action("Leave room action");
     if (connection) {
       connection.leave();
       setConnection(null);
@@ -189,8 +246,16 @@ function App() {
   };
 
   const handleRematch = () => {
+    clientLog.action("Host clicked Rematch");
     if (connection) {
       connection.send.rematch();
+    }
+  };
+
+  const handleNextRound = () => {
+    clientLog.action("Host clicked Next Round");
+    if (connection) {
+      connection.send.nextRound();
     }
   };
 
@@ -202,7 +267,12 @@ function App() {
   // Check if local player is in last place (or picker)
   const sortedPlayers = [...(gameState?.players || [])].sort((a, b) => b.score - a.score);
   const lastPlayer = sortedPlayers[sortedPlayers.length - 1];
-  const isLocalPicker = lastPlayer?.id === profile.playerId || isHost;
+  const isVote = pickOffer?.pickerId === "vote";
+  const isLocalPicker = isVote || (pickOffer ? pickOffer.pickerId === profile.playerId : lastPlayer?.id === profile.playerId || isHost);
+  const pickerPlayer = gameState?.players?.find((p) => p.id === pickOffer?.pickerId);
+  const pickerName = isVote
+    ? "Everyone (Vote)"
+    : (pickerPlayer?.name || lastPlayer?.name || "Last place");
 
   return (
     <>
@@ -264,6 +334,7 @@ function App() {
           onToggleReady={handleToggleReady}
           onEmote={handleEmote}
           onLeave={handleLeave}
+          onKick={(playerId) => { clientLog.action('Host kicking player', { playerId }); connection?.send.kick(playerId); }}
           onEditRules={() => {
             if (isHost) {
               appStore.setScreen("settings");
@@ -287,7 +358,7 @@ function App() {
                 gameState={gameState}
                 localPlayerId={profile.playerId}
                 isMuted={isMuted}
-                onMuteToggle={() => setIsMuted(!isMuted)}
+                onMuteToggle={() => { clientLog.action('Toggle audio mute', { muted: !isMuted }); setIsMuted(!isMuted); }}
               />
             )}
 
@@ -295,7 +366,9 @@ function App() {
             {isPick && (
               <PickOverlay
                 isPicker={isLocalPicker}
-                pickerName={lastPlayer?.name || "Last place"}
+                pickerName={pickerName}
+                cards={pickOffer?.cards}
+                timeoutSec={pickOffer?.timeoutSec}
                 onPick={(idx) => connection.send.pick(idx)}
               />
             )}
@@ -309,7 +382,7 @@ function App() {
                 players={gameState?.players || []}
                 localPlayerId={profile.playerId}
                 isHost={isHost}
-                onNextRound={handleStartGame}
+                onNextRound={handleNextRound}
                 onRematch={handleRematch}
                 onLeave={handleLeave}
               />

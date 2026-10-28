@@ -3,6 +3,26 @@ import { RoomSettings } from "@mutator-party/shared";
 
 export type ScreenName = 'landing' | 'settings' | 'create_room' | 'lobby' | 'game' | 'results' | 'final';
 
+export interface CrateClientState {
+  id: number;
+  x?: number;
+  y?: number;
+  itemType: string;
+  state: string;
+}
+
+export interface BombClientState {
+  holderId: string | null;
+  fuse: number;
+  timer?: number;
+}
+
+export interface CrownClientState {
+  holderId: string | null;
+  x?: number;
+  y?: number;
+}
+
 export interface PlayerClientState {
   id: string;
   name: string;
@@ -11,6 +31,17 @@ export interface PlayerClientState {
   y: number;
   vx: number;
   vy: number;
+  scale?: number;
+  facingRight?: boolean;
+  grounded?: boolean;
+  stunned?: boolean;
+  frozen?: boolean;
+  shielded?: boolean;
+  isOut?: boolean;
+  connected?: boolean;
+  isBot?: boolean;
+  ready?: boolean;
+  host?: boolean;
   flags: number;
   score: number;
   lives: number;
@@ -28,6 +59,12 @@ export interface RoomClientState {
   themeId: string;
   timeLeft: number;
   players: PlayerClientState[];
+  crates?: CrateClientState[];
+  bomb?: BombClientState;
+  crown?: CrownClientState;
+  crumbleTilesBitmask?: number;
+  crumbleWarnBitmask?: number;
+  maxRounds?: number;
   serverTime: number;
   seed: number;
 }

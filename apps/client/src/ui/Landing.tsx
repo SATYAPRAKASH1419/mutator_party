@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from "preact/hooks";
+import { clientLog } from "../util/logger";
+import { PLAYER_COLORS } from "@mutator-party/shared";
 import { appStore } from "../app/store";
 import { showToast } from "../util/toast";
 import {
@@ -49,6 +51,7 @@ export function Landing({ onJoin, onCreate }: LandingProps) {
 
   const [activeTab, setActiveTab] = useState<"create" | "join">("create");
   const [name, setName] = useState(profile.name || "Satya");
+  const [selectedColor, setSelectedColor] = useState(profile.color ?? 0);
   const [digits, setDigits] = useState<string[]>(() => {
     const chars = initialCode.toUpperCase().slice(0, 5).split("");
     while (chars.length < 5) chars.push("");
@@ -67,11 +70,6 @@ export function Landing({ onJoin, onCreate }: LandingProps) {
     window.addEventListener("orientationchange", handleOrientation);
     document.addEventListener("fullscreenchange", handleOrientation);
     document.addEventListener("webkitfullscreenchange", handleOrientation);
-
-    // Auto-enter fullscreen for mobile / small screen devices
-    if (isMobileOrSmallDevice() && !isAppFullscreen()) {
-      requestAppFullscreen().catch(() => {});
-    }
 
     return () => {
       window.removeEventListener("resize", handleOrientation);
@@ -94,6 +92,7 @@ export function Landing({ onJoin, onCreate }: LandingProps) {
   ];
 
   const handleRollDice = () => {
+    clientLog.action("Randomize name clicked");
     const randomName = FUN_NAMES[Math.floor(Math.random() * FUN_NAMES.length)]!;
     setName(randomName);
     setNameError("");
@@ -372,6 +371,40 @@ export function Landing({ onJoin, onCreate }: LandingProps) {
           }}
           onRollDice={handleRollDice}
         />
+
+        {/* 8-Color Avatar Palette Row */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", margin: "2px 0 6px" }}>
+          <span style={{ fontSize: "12px", fontWeight: 900, color: "var(--mp-muted)" }}>Color:</span>
+          <div style={{ display: "flex", gap: "6px" }}>
+            {PLAYER_COLORS.map((hex, idx) => {
+              const isSelected = selectedColor === idx;
+              return (
+                <button
+                  key={hex}
+                  type="button"
+                  onClick={() => {
+                    clientLog.action("Select player color", { colorIndex: idx }); setSelectedColor(idx);
+                    appStore.setProfile({ color: idx });
+                  }}
+                  title={`Color ${idx + 1}`}
+                  style={{
+                    width: isSelected ? "24px" : "20px",
+                    height: isSelected ? "24px" : "20px",
+                    borderRadius: "50%",
+                    backgroundColor: hex,
+                    border: isSelected ? "2.5px solid var(--mp-ink)" : "2px solid rgba(27,27,58,0.5)",
+                    transform: isSelected ? "scale(1.15)" : "scale(1)",
+                    boxShadow: isSelected ? "0 2px 0 var(--mp-ink)" : "none",
+                    cursor: "pointer",
+                    padding: 0,
+                    outline: "none",
+                    transition: "transform 0.1s ease",
+                  }}
+                />
+              );
+            })}
+          </div>
+        </div>
 
         {/* Modern Game Style Tab Switcher */}
         <div className="mp-tab-switcher">

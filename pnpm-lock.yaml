@@ -178,6 +178,9 @@ importers:
 
   apps/client:
     dependencies:
+      '@colyseus/schema':
+        specifier: ^5.0.42
+        version: 5.0.42(typescript@5.9.3)
       '@mutator-party/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -2642,6 +2645,10 @@ snapshots:
       - zod
 
   '@colyseus/schema@2.0.37': {}
+
+  '@colyseus/schema@5.0.42(typescript@5.9.3)':
+    optionalDependencies:
+      typescript: 5.9.3
 
   '@colyseus/schema@5.0.42(typescript@7.0.2)':
     optionalDependencies:

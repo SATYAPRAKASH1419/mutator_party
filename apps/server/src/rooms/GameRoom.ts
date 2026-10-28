@@ -26,7 +26,7 @@ import {
   setupTwists,
 } from "@mutator-party/shared";
 import { RoomState, PlayerSchema, CrateSchema } from "./schema.js";
-import { generateRoomCode } from "../security/roomCode.js";
+import { generateRoomCode, normalizeRoomCode } from "../security/roomCode.js";
 import {
   validatePlayerName,
   deduplicatePlayerName,
@@ -93,7 +93,10 @@ export class GameRoom extends Room<{
     this.setPatchRate(1000 / (serverConfig.PATCH_HZ || 20));
 
     // Generate room code and publish in metadata for lookup (safe in unit tests)
-    this.roomCode = generateRoomCode();
+    this.roomCode = options?.code
+      ? (normalizeRoomCode(options.code) || generateRoomCode())
+      : generateRoomCode();
+    this.state.roomCode = this.roomCode;
     if ((this as any)._listing) {
       this.setMetadata({ code: this.roomCode }).catch(() => {});
     }
@@ -249,6 +252,15 @@ export class GameRoom extends Room<{
 
     activePlayersGauge.inc();
     roomLogger.playerJoined(this.roomId, this.roomCode, this.state.players.size);
+    roomLogger.action(this.roomId, this.roomCode, "player_join", { sessionId: client.sessionId, isHost: player.host });
+
+    if (typeof client?.send === "function") {
+      client.send("room:info", {
+        code: this.roomCode,
+        isHost: player.host,
+        settings: this.settings,
+      });
+    }
   }
 
   override async onLeave(client: Client, code?: number) {
@@ -290,6 +302,15 @@ export class GameRoom extends Room<{
       );
       if (nextHost) {
         nextHost.host = true;
+        roomLogger.action(this.roomId, this.roomCode, "host_migrated", { newHostId: nextHost.id });
+        const hostClient = this.clients.find((c) => c.sessionId === nextHost.id);
+        if (hostClient && typeof hostClient.send === "function") {
+          hostClient.send("room:info", {
+            code: this.roomCode,
+            isHost: true,
+            settings: this.settings,
+          });
+        }
       }
     }
 
@@ -746,6 +767,7 @@ export class GameRoom extends Room<{
       if (player) {
         player.ready =
           typeof message?.value === "boolean" ? message.value : !player.ready;
+        roomLogger.action(this.roomId, this.roomCode, "ready", { sessionId: client.sessionId, ready: player.ready });
       }
     });
 
@@ -794,6 +816,7 @@ export class GameRoom extends Room<{
       this.maxClients = this.settings.match.maxPlayers;
       this.phaseController.updateSettings(this.settings);
       this.broadcast("settings", this.settings);
+      roomLogger.action(this.roomId, this.roomCode, "settings_updated", { sessionId: client.sessionId });
     });
 
     // 3. Start game (host only)
@@ -855,6 +878,7 @@ export class GameRoom extends Room<{
         }
       }
 
+      roomLogger.action(this.roomId, this.roomCode, "start_game", { sessionId: client.sessionId, playersCount: this.state.players.size });
       this.phaseController.startMatch(this.getPlayerSummaries());
     });
 
@@ -882,6 +906,7 @@ export class GameRoom extends Room<{
     this.onMessage("pick", (client, message: { index: number }) => {
       if (!this.isMessageValid(message)) return;
       if (typeof message?.index === "number") {
+        roomLogger.action(this.roomId, this.roomCode, "pick_twist", { sessionId: client.sessionId, index: message.index });
         this.phaseController.handlePick(
           client.sessionId,
           message.index,
@@ -905,6 +930,7 @@ export class GameRoom extends Room<{
       const targetId = message?.playerId;
       if (!targetId || targetId === client.sessionId) return;
 
+      roomLogger.action(this.roomId, this.roomCode, "kick_player", { hostSessionId: client.sessionId, targetPlayerId: targetId });
       const targetClient = this.clients.find((c) => c.sessionId === targetId);
       this.presenceManager.kick(targetId);
       kicksCounter.inc();
@@ -919,7 +945,40 @@ export class GameRoom extends Room<{
       if (!this.isMessageValid(message)) return;
       const player = this.state.players.get(client.sessionId);
       if (player && typeof message?.id === "string") {
+        roomLogger.action(this.roomId, this.roomCode, "emote", { sessionId: client.sessionId, emoteId: message.id });
         this.broadcast("emote", { playerId: client.sessionId, id: message.id });
+      }
+    });
+
+    // 8. Rematch from final screen
+    this.onMessage("rematch", (client) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player || !player.host) {
+        client.send("error", {
+          code: "NOT_HOST",
+          message: "Only the host can start a rematch.",
+        });
+        return;
+      }
+      if (this.state.phase !== "final") {
+        return;
+      }
+      roomLogger.action(this.roomId, this.roomCode, "rematch", { sessionId: client.sessionId });
+      for (const p of this.state.players.values()) {
+        p.score = 0;
+        p.hits = 0;
+        p.isOut = false;
+      }
+      this.phaseController.startMatch(this.getPlayerSummaries());
+    });
+
+    // 9. Skip results timer to next round immediately
+    this.onMessage("next_round", (client) => {
+      const player = this.state.players.get(client.sessionId);
+      if (!player || !player.host) return;
+      if (this.state.phase === "results") {
+        roomLogger.action(this.roomId, this.roomCode, "next_round", { sessionId: client.sessionId });
+        this.phaseController.skipResultsTimer(this.getPlayerSummaries());
       }
     });
   }

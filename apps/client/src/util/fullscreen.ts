@@ -6,19 +6,19 @@
 
 export function isMobileOrSmallDevice(): boolean {
   if (typeof window === "undefined") return false;
-  // A device is "small / mobile" if screen dimensions are small (width <= 960 or height <= 580)
-  // or if userAgent is mobile / tablet
-  const isSmallScreen = window.innerWidth <= 960 || window.innerHeight <= 580;
   const isMobileUA =
     /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(
       navigator.userAgent,
     );
+  const isCoarsePointer =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(pointer: coarse)").matches;
   const isTouch =
     "ontouchstart" in window ||
-    navigator.maxTouchPoints > 0 ||
-    ("msMaxTouchPoints" in navigator && (navigator as any).msMaxTouchPoints > 0);
+    navigator.maxTouchPoints > 0;
 
-  return isSmallScreen || isMobileUA || (isTouch && window.innerWidth <= 1024);
+  // Only true mobile/tablet devices (never desktop just because window was resized or DevTools opened)
+  return isMobileUA || (isCoarsePointer && isTouch && window.innerWidth <= 850);
 }
 
 export function isAppFullscreen(): boolean {
@@ -57,7 +57,7 @@ export async function requestAppFullscreen(): Promise<boolean> {
     }
 
     return true;
-  } catch (err) {
+  } catch {
     // Browsers require a user gesture (tap/click); subsequent click/tap will trigger
     return false;
   }
@@ -67,7 +67,7 @@ export async function exitAppFullscreen(): Promise<boolean> {
   if (typeof document === "undefined") return false;
   if (!isAppFullscreen()) return true;
 
-  // Mobile / small devices must always remain in fullscreen
+  // Mobile / small devices remain in fullscreen
   if (isMobileOrSmallDevice()) return false;
 
   const doc = document as any;
@@ -117,8 +117,8 @@ export function initAutoFullscreenOnMobile(): () => void {
     }
   };
 
-  // Immediate check on mount/load
-  tryEnterFullscreen();
+  // Fullscreen can only be initiated by a direct user gesture (tap/click), not automatically on load.
+  // The event listeners below will trigger it on the first tap/click.
 
   // On orientation change or window resize (e.g. rotating into landscape on any page)
   window.addEventListener("orientationchange", tryEnterFullscreen, { passive: true });
@@ -138,4 +138,13 @@ export function initAutoFullscreenOnMobile(): () => void {
     document.removeEventListener("touchstart", tryEnterFullscreen, true);
     document.removeEventListener("touchend", tryEnterFullscreen, true);
   };
+}
+
+/**
+ * Safe touch selection utility:
+ * DevTools inspection and context menus are fully preserved on all platforms.
+ */
+export function preventTouchSelectionOnHold(): () => void {
+  // Do not block contextmenu or selectstart events so browser DevTools and right-click Inspect work unhindered.
+  return () => {};
 }

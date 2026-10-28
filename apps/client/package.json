@@ -10,6 +10,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@colyseus/schema": "^5.0.42",
     "@mutator-party/shared": "workspace:*",
     "colyseus.js": "^0.15.28",
     "lucide-preact": "^1.16.0",

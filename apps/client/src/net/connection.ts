@@ -31,6 +31,7 @@ export interface RoomConnection {
     emote(id: string): void;
     kick(playerId: string): void;
     rematch(): void;
+    nextRound(): void;
   };
   on(evt: "state", cb: (s: RoomClientState) => void): () => void;
   on(evt: "settings", cb: (s: Partial<RoomSettings>) => void): () => void;
@@ -44,6 +45,9 @@ export interface RoomConnection {
     cb: (e: { code: string; message: string }) => void,
   ): () => void;
   on(evt: "status", cb: (s: ConnectionStatus) => void): () => void;
+  on(evt: "pickOffer", cb: (offer: any) => void): () => void;
+  on(evt: "emote", cb: (e: { playerId: string; id: string }) => void): () => void;
+  on(evt: "roomInfo", cb: (info: { code: string; isHost: boolean; settings?: Partial<RoomSettings> }) => void): () => void;
   ping(): number;
   leave(): void;
 }

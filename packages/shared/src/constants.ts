@@ -140,6 +140,26 @@ export const MAX_FALL_SPEED = 1300; // px/s — terminal velocity
 export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 export const CODE_LENGTH = 5;
 
+export function generateRoomCode(): string {
+  let code = '';
+  for (let i = 0; i < CODE_LENGTH; i++) {
+    code += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+  }
+  return code;
+}
+
+export function normalizeRoomCode(input: unknown): string | null {
+  if (typeof input !== 'string') return null;
+  const cleaned = input.trim().toUpperCase();
+  if (cleaned.length !== CODE_LENGTH) return null;
+  for (let i = 0; i < cleaned.length; i++) {
+    if (!CODE_ALPHABET.includes(cleaned[i]!)) {
+      return null;
+    }
+  }
+  return cleaned;
+}
+
 export const RECONNECT_WINDOW_SEC = 30;
 export const AFK_WARN_SEC = 15;
 export const AFK_BOT_SEC = 30;

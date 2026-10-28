@@ -228,6 +228,16 @@ export class PhaseController {
     }, PHASE_RESULTS_SEC * 1000);
   }
 
+  public skipResultsTimer(players: readonly PlayerSummary[]) {
+    if (this._phase !== "results") return;
+    this.clearTimer();
+    if (this._round >= this.maxRounds) {
+      this.enterFinal();
+    } else {
+      this.prepareNextRound(players);
+    }
+  }
+
   /**
    * Checks whether to launch the pick phase or proceed directly to next round.
    */

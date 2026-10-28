@@ -123,6 +123,9 @@ export class MockRoomConnection implements RoomConnection {
       });
     },
     kick: (_playerId: string) => {},
+    nextRound: () => {
+      this.startNextRound();
+    },
     rematch: () => {
       this.roundNumber = 0;
       this.startNextRound();
@@ -361,6 +364,17 @@ export class MockRoomConnection implements RoomConnection {
         y: p.y,
         vx: p.vx,
         vy: p.vy,
+        scale: p.scale ?? 1.0,
+        facingRight: p.facingRight ?? true,
+        grounded: p.grounded,
+        stunned: (p.stunTimer ?? 0) > 0,
+        frozen: (p.freezeTimer ?? 0) > 0,
+        shielded: (p.shieldTimer ?? 0) > 0,
+        isOut: Boolean(p.isOut),
+        connected: true,
+        isBot: Boolean(p.isBot),
+        ready: true,
+        host: p.id === this.localPlayerId && this.isHost,
         flags: (p.grounded ? 1 : 0) | ((p.stunTimer ?? 0) > 0 ? 2 : 0) | ((p.shieldTimer ?? 0) > 0 ? 4 : 0),
         score: p.score ?? 0,
         lives: p.lives ?? (p.isOut ? 0 : 3),
@@ -394,6 +408,14 @@ export class MockRoomConnection implements RoomConnection {
       crumbleWarnBitmask: warnMask,
       bomb: this.simState?.bomb,
       crown: this.simState?.crown,
+      crates: (this.simState?.crates ?? []).map((c) => ({
+        id: c.id,
+        x: c.x,
+        y: c.y,
+        itemType: c.type || c.item || "",
+        state: c.state,
+      })),
+      maxRounds: this.currentSettings?.match?.rounds ?? 5,
     };
 
     this.emit("state", state);

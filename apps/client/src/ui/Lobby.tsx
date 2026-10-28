@@ -1,10 +1,11 @@
-import { useState, useMemo } from "preact/hooks";
+import { useState, useMemo, useEffect } from "preact/hooks";
 import { PLAYER_COLORS, type RoomSettings } from "@mutator-party/shared";
 import type { PlayerClientState } from "../app/store";
 
 import { RoomCodeHeader } from "./lobby/RoomCodeHeader";
 import { PlayerGrid, type SlotItem } from "./lobby/PlayerGrid";
 import { QuickEmotesBar } from "./lobby/QuickEmotesBar";
+import { clientLog } from "../util/logger";
 import { LobbyActions } from "./lobby/LobbyActions";
 import { BannerAd } from "./components/BannerAd";
 import { RulesModal } from "./lobby/RulesModal";
@@ -19,6 +20,7 @@ interface LobbyProps {
   onEmote: (emoji: string) => void;
   onLeave: () => void;
   onEditRules?: () => void;
+  onKick?: (playerId: string) => void;
 }
 
 export function Lobby({
@@ -31,12 +33,14 @@ export function Lobby({
   onEmote,
   onLeave,
   onEditRules,
+  onKick,
 }: LobbyProps) {
   const [isReady, setIsReady] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [playerEmotes, setPlayerEmotes] = useState<Record<string, { emoji: string; key: number }>>({});
 
   const handleToggle = () => {
+    clientLog.action("Lobby ready button clicked", { nextReady: !isReady });
     const next = !isReady;
     setIsReady(next);
     onToggleReady(next);
@@ -73,8 +77,10 @@ export function Lobby({
       if (i < effectivePlayers.length && effectivePlayers[i]) {
         const p = effectivePlayers[i]!;
         const slotId = p.id || `p_${i}`;
-        const isPlayerHost = i === 0;
-        const readyStatus = isPlayerHost ? true : isReady;
+        const isPlayerHost = (p as any).host ?? (i === 0);
+        const readyStatus = isPlayerHost ? true : ((p as any).ready ?? isReady);
+        const canKick = isHost && !isPlayerHost;
+
         const activeEmoteData = playerEmotes[slotId];
 
         slots.push({
@@ -84,6 +90,7 @@ export function Lobby({
           colorIdx: p.color !== undefined ? p.color : i % PLAYER_COLORS.length,
           isHost: isPlayerHost,
           isReady: readyStatus,
+          canKick,
           activeEmote: activeEmoteData?.emoji || null,
           activeEmoteKey: activeEmoteData?.key,
         });
@@ -115,6 +122,29 @@ export function Lobby({
       });
     }, 2400);
   };
+
+  useEffect(() => {
+    const onRemoteEmote = (e: any) => {
+      const detail = e.detail;
+      if (!detail?.id) return;
+      const targetSlot = displaySlots.find((s) => s.id === detail.playerId) || displaySlots[0];
+      const slotId = targetSlot ? targetSlot.id : (displaySlots[0]?.id || "host_local");
+      const newKey = Date.now() + Math.floor(Math.random() * 1000);
+      setPlayerEmotes((prev) => ({ ...prev, [slotId]: { emoji: detail.id, key: newKey } }));
+      setTimeout(() => {
+        setPlayerEmotes((prev) => {
+          if (prev[slotId]?.key === newKey) {
+            const next = { ...prev };
+            delete next[slotId];
+            return next;
+          }
+          return prev;
+        });
+      }, 2400);
+    };
+    window.addEventListener("mp:emote", onRemoteEmote);
+    return () => window.removeEventListener("mp:emote", onRemoteEmote);
+  }, [displaySlots]);
 
   // Count unready guests
   const unreadyGuests = displaySlots.filter(
@@ -317,7 +347,7 @@ export function Lobby({
             </div>
 
             {/* 1x8 Character Lineup Podium */}
-            <PlayerGrid slots={displaySlots} fillBots={fillBots} />
+            <PlayerGrid slots={displaySlots} fillBots={fillBots} onKick={onKick} />
 
             {/* Centered Arcade Reaction Deck */}
             <QuickEmotesBar onEmote={handleLocalEmote} />

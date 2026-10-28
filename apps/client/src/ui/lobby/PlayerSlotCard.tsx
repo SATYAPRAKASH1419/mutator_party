@@ -8,6 +8,8 @@ interface PlayerSlotCardProps {
   isReady: boolean;
   activeEmote?: string | null;
   activeEmoteKey?: number;
+  canKick?: boolean;
+  onKick?: () => void;
 }
 
 export function PlayerSlotCard({
@@ -17,6 +19,8 @@ export function PlayerSlotCard({
   isReady,
   activeEmote,
   activeEmoteKey,
+  canKick,
+  onKick,
 }: PlayerSlotCardProps) {
   const colorHex = PLAYER_COLORS[colorIdx % PLAYER_COLORS.length] || "#FF6B6B";
   const readyActive = isHost || isReady;
@@ -260,6 +264,37 @@ export function PlayerSlotCard({
         className="mp-pod-top-stripe"
         style={{ background: colorHex }}
       />
+      {canKick && onKick && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onKick();
+          }}
+          title="Kick player"
+          style={{
+            position: "absolute",
+            top: "-6px",
+            right: "-6px",
+            width: "22px",
+            height: "22px",
+            borderRadius: "50%",
+            background: "#FF4D4D",
+            color: "#FFF",
+            border: "2px solid #1B1B3A",
+            fontSize: "12px",
+            fontWeight: 900,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 40,
+            boxShadow: "1px 2px 0 #1B1B3A",
+          }}
+        >
+          ✕
+        </button>
+      )}
 
       {/* Comic Speech Bubble */}
       {activeEmote && (

@@ -1,5 +1,3 @@
-/* eslint-disable */
-// @ts-nocheck
 /**
  * GameCanvas.tsx
  *
@@ -15,10 +13,13 @@
  */
 
 import { useEffect, useRef } from "preact/hooks";
+import { getThemeColors } from "./theme";
+import { sound } from "./audio";
+import { clientLog } from "../util/logger";
 import {
   generateArena,
   islandSizeToTiles,
-  type Arena,
+  type ArenaResult,
   type RoomSettings,
 } from "@mutator-party/shared";
 import type { RoomConnection } from "../net/connection";
@@ -71,6 +72,7 @@ export function GameCanvas({ connection, localPlayerId, settings }: GameCanvasPr
     let mode = "brawl";
     let timeLeft = 60;
     let twists: string[] = [];
+    let activeTheme: any = "sunny";
     let crumbleTilesBitmask = 0;
     let crumbleWarnBitmask = 0;
     let bombHolderId = "";
@@ -82,7 +84,7 @@ export function GameCanvas({ connection, localPlayerId, settings }: GameCanvasPr
     let arenaSeed = 12345;
 
     // Procedural arena matching physics exactly
-    let currentArena: Arena = generateArena({
+    let currentArena: ArenaResult = generateArena({
       seed: arenaSeed,
       round: 1,
       platformCount: settings?.arena?.platformCount ?? 4,
@@ -123,6 +125,7 @@ export function GameCanvas({ connection, localPlayerId, settings }: GameCanvasPr
       mode = s.mode || "brawl";
       timeLeft = s.timeLeft !== undefined ? s.timeLeft : 60;
       twists = s.twists || [];
+      if (s.themeId) activeTheme = s.themeId;
 
       if (s.bomb) bombHolderId = s.bomb.holderId || "";
       if (s.crown) crown = s.crown;
@@ -134,12 +137,14 @@ export function GameCanvas({ connection, localPlayerId, settings }: GameCanvasPr
       if (incoming.length > 0) {
         players = incoming.map((p: any, idx: number) => {
           const existing = players.find((x) => x.id === p.id);
+          const isLocal = p.id === localPlayerId;
           const targetX = p.x ?? 480;
           const targetY = p.y ?? 382;
 
-          // Smooth interpolation from server ticks
-          const currentX = existing ? existing.x + (targetX - existing.x) * 0.45 : targetX;
-          const currentY = existing ? existing.y + (targetY - existing.y) * 0.45 : targetY;
+          const alpha = isLocal ? 0.75 : 0.45;
+          const dist = existing ? Math.hypot(targetX - existing.x, targetY - existing.y) : 0;
+          const currentX = existing && dist < 120 ? existing.x + (targetX - existing.x) * alpha : targetX;
+          const currentY = existing && dist < 120 ? existing.y + (targetY - existing.y) * alpha : targetY;
 
           const playerColor =
             typeof p.color === "number"
@@ -152,7 +157,7 @@ export function GameCanvas({ connection, localPlayerId, settings }: GameCanvasPr
             id: p.id,
             name: p.name || `Player ${idx + 1}`,
             color: playerColor,
-            human: p.id === localPlayerId,
+            human: isLocal,
             x: currentX,
             y: currentY,
             vx: p.vx ?? 0,
@@ -162,7 +167,7 @@ export function GameCanvas({ connection, localPlayerId, settings }: GameCanvasPr
             score: p.score ?? 0,
             hits: p.hits ?? 0,
             alive: !p.isOut,
-            face: (p.vx ?? 0) >= 0 ? 1 : -1,
+            face: p.facingRight !== undefined ? (p.facingRight ? 1 : -1) : ((p.vx ?? 0) >= 0 ? 1 : -1),
             item: p.item || null,
             flags: p.flags ?? 0,
           };
@@ -174,6 +179,7 @@ export function GameCanvas({ connection, localPlayerId, settings }: GameCanvasPr
       round = data.n || 1;
       mode = data.mode || "brawl";
       twists = data.twists || [];
+      if (data.themeId) activeTheme = data.themeId;
       if (data.seed) arenaSeed = data.seed;
 
       currentArena = generateArena({
@@ -187,12 +193,28 @@ export function GameCanvas({ connection, localPlayerId, settings }: GameCanvasPr
       });
 
       toast(`Round ${round}: ${MODES[mode]?.name || mode}!`, "#FFC93C");
+      clientLog.game("Round started in GameCanvas", { round, mode, twists, theme: activeTheme, seed: arenaSeed });
     });
 
     const unsubEvent = connection.on("event", (ev: any) => {
-      if (ev.type === "toast" && ev.payload?.message) toast(ev.payload.message);
-      if (ev.type === "shove") shake = 10;
-      if (ev.type === "ko") shake = 15;
+      const msg = ev.message || ev.payload?.message || (typeof ev.payload === "string" ? ev.payload : null);
+      if (ev.type === "toast" && msg) toast(msg, ev.color || "#fff");
+      clientLog.game("In-game event received", ev);
+      if (ev.type === "shove" || ev.type === "shove_hit") {
+        shake = 10;
+        sound.playShove();
+      }
+      if (ev.type === "ko") {
+        shake = 15;
+        sound.playKO();
+      }
+      if (ev.type === "pickup") {
+        sound.playPickup();
+      }
+      if (ev.type === "bomb_explode") {
+        shake = 20;
+        sound.playBombExplode();
+      }
     });
 
     // ── Input Streaming (30Hz) ──────────────────────────────────────────────
@@ -200,6 +222,8 @@ export function GameCanvas({ connection, localPlayerId, settings }: GameCanvasPr
     const touch = { left: false, right: false };
     let jumpQ = false, shoveQ = false;
     let inputSeq = 0;
+    let lastBits = -1;
+    let lastSentTime = 0;
 
     function sendInputs() {
       if (!connection) return;
@@ -209,8 +233,16 @@ export function GameCanvas({ connection, localPlayerId, settings }: GameCanvasPr
       if (jumpQ || keys["w"] || keys["arrowup"] || keys[" "]) { bits |= 4; jumpQ = false; }
       if (shoveQ || keys["e"] || keys["shift"] || keys["j"]) { bits |= 8; shoveQ = false; }
 
-      inputSeq = (inputSeq + 1) & 0xffff;
-      connection.send.input(inputSeq, bits);
+      const now = performance.now();
+      const changed = bits !== lastBits;
+      const heartbeat = now - lastSentTime >= 100;
+
+      if (changed || heartbeat) {
+        inputSeq = (inputSeq + 1) & 0xffff;
+        lastBits = bits;
+        lastSentTime = now;
+        connection.send.input(inputSeq, bits);
+      }
     }
 
     const inputTimer = setInterval(sendInputs, 1000 / 30);
@@ -219,8 +251,14 @@ export function GameCanvas({ connection, localPlayerId, settings }: GameCanvasPr
       const k = e.key.toLowerCase();
       if ([" ", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) e.preventDefault();
       keys[k] = true;
-      if (k === " " || k === "w" || k === "arrowup") jumpQ = true;
-      if (k === "e" || k === "shift" || k === "j") shoveQ = true;
+      if (k === " " || k === "w" || k === "arrowup") {
+        if (!jumpQ) sound.playJump();
+        jumpQ = true;
+      }
+      if (k === "e" || k === "shift" || k === "j") {
+        if (!shoveQ) sound.playShove();
+        shoveQ = true;
+      }
       if (state === "pick" && (k === "1" || k === "2" || k === "3")) {
         connection.send.pick((+k - 1) as 0 | 1 | 2);
       }
@@ -241,9 +279,13 @@ export function GameCanvas({ connection, localPlayerId, settings }: GameCanvasPr
       const downHandler = (e: Event) => {
         e.preventDefault();
         b.classList.add("on");
-        if (k === "jump") jumpQ = true;
-        else if (k === "shove") shoveQ = true;
-        else (touch as any)[k] = true;
+        if (k === "jump") {
+          sound.playJump();
+          jumpQ = true;
+        } else if (k === "shove") {
+          sound.playShove();
+          shoveQ = true;
+        } else (touch as any)[k] = true;
       };
       const upHandler = () => {
         b.classList.remove("on");
@@ -290,11 +332,17 @@ export function GameCanvas({ connection, localPlayerId, settings }: GameCanvasPr
       ctx.fillStyle = color; ctx.fillText(s, x, y);
     }
 
+    const hexToCss = (hex: number) => `#${hex.toString(16).padStart(6, "0")}`;
+
     function drawBG(dt: number) {
+      const themeColors = getThemeColors(activeTheme);
+      const skyTop = hexToCss(themeColors.skyTop);
+      const skyBottom = hexToCss(themeColors.skyBottom);
+
       const g = ctx.createLinearGradient(0, 0, 0, H);
-      g.addColorStop(0, "#8EDBFF"); g.addColorStop(1, "#FFF0C9");
+      g.addColorStop(0, skyTop); g.addColorStop(1, skyBottom);
       ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = "#FFD25A"; ctx.beginPath(); ctx.arc(820, 90, 46, 0, 6.283); ctx.fill();
+      ctx.fillStyle = themeColors.isNight ? "#E2E8F0" : "#FFD25A"; ctx.beginPath(); ctx.arc(820, 90, 46, 0, 6.283); ctx.fill();
       ctx.fillStyle = "rgba(255,255,255,.9)";
       for (const c of clouds) {
         c.x += c.v * dt; if (c.x > W + 120) c.x = -120;
@@ -314,12 +362,13 @@ export function GameCanvas({ connection, localPlayerId, settings }: GameCanvasPr
     }
 
     function drawWorld() {
+      const themeColors = getThemeColors(activeTheme);
       const isIce = twists.includes("ice");
       const isBounce = twists.includes("bounce");
-      const floorFill = isIce ? "#C8F0FF" : isBounce ? "#FF9DBB" : "#F2A65A";
-      const floorEdge = isIce ? "#8FD0EA" : isBounce ? "#E0668C" : "#C97A2C";
-      const platFill = isIce ? "#D7F5FF" : "#9FF0CE";
-      const platEdge = isIce ? "#8FD0EA" : "#5DC9A0";
+      const floorFill = isIce ? "#C8F0FF" : isBounce ? "#FF9DBB" : hexToCss(themeColors.islandFill);
+      const floorEdge = isIce ? "#8FD0EA" : isBounce ? "#E0668C" : hexToCss(themeColors.islandEdge);
+      const platFill = isIce ? "#D7F5FF" : hexToCss(themeColors.platformFill);
+      const platEdge = isIce ? "#8FD0EA" : hexToCss(themeColors.platformEdge);
 
       // 1. Procedural floating platforms from actual arena geometry
       if (currentArena?.platforms) {
