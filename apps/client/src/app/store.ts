@@ -1,7 +1,7 @@
 import { loadProfile, SavedProfile, saveProfile } from "@/util/storage";
 import { RoomSettings } from "@mutator-party/shared";
 
-export type ScreenName = 'landing' | 'settings' | 'create_room' | 'lobby' | 'game' | 'results' | 'final';
+export type ScreenName = 'landing' | 'settings' | 'lobby' | 'game' | 'results' | 'final';
 
 export interface CrateClientState {
   id: number;

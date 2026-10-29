@@ -37,7 +37,7 @@ export function useLandingForm({ onJoin, onCreate }: UseLandingFormProps) {
   const initialCode = appStore.getState().roomCode || "";
 
   const [activeTab, setActiveTab] = useState<"create" | "join">("create");
-  const [name, setName] = useState(profile.name || "Satya");
+  const [name, setName] = useState(profile.name || "Austin");
   const [selectedColor, setSelectedColor] = useState(profile.color ?? 0);
   const [digits, setDigits] = useState<string[]>(() => {
     const chars = initialCode.toUpperCase().slice(0, 5).split("");
@@ -95,19 +95,6 @@ export function useLandingForm({ onJoin, onCreate }: UseLandingFormProps) {
       return;
     }
 
-    // Support paste of entire code
-    if (upper.length > 1) {
-      const chars = upper.slice(0, 5).split("");
-      const next = [...digits];
-      for (let i = 0; i < 5; i++) {
-        next[i] = chars[i] || "";
-      }
-      setDigits(next);
-      const focusTarget = Math.min(chars.length, 4);
-      inputRefs[focusTarget]?.current?.focus();
-      return;
-    }
-
     const next = [...digits];
     next[index] = upper[upper.length - 1]!;
     setDigits(next);
@@ -116,6 +103,22 @@ export function useLandingForm({ onJoin, onCreate }: UseLandingFormProps) {
     if (index < 4) {
       inputRefs[index + 1]?.current?.focus();
     }
+  };
+
+  const handleDigitPaste = (e: ClipboardEvent) => {
+    e.preventDefault();
+    if (!e.clipboardData) return;
+    const upper = e.clipboardData
+      .getData("text")
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 5);
+    if (!upper) return;
+
+    const next = upper.split("");
+    while (next.length < 5) next.push("");
+    setDigits(next);
+    inputRefs[Math.min(upper.length, 4)]?.current?.focus();
   };
 
   const handleDigitKeyDown = (index: number, e: KeyboardEvent) => {
@@ -182,9 +185,9 @@ export function useLandingForm({ onJoin, onCreate }: UseLandingFormProps) {
     handleNameChange,
     handleColorChange,
     handleDigitChange,
+    handleDigitPaste,
     handleDigitKeyDown,
     handleCreateSubmit,
     handleJoinSubmit,
   };
 }
-

@@ -92,7 +92,7 @@ export function App() {
       )}
 
       {/* ── Screen: Settings (Host only) ────────────────────────────────────── */}
-      {(currentScreen === "settings" || currentScreen === "create_room") && isHost && (
+      {currentScreen === "settings" && isHost && (
         <Settings
           initialSettings={settings || undefined}
           onSave={handleSaveSettings}
@@ -180,4 +180,3 @@ export function App() {
     </>
   );
 }
-

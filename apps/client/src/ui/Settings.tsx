@@ -26,8 +26,6 @@ export interface SettingsProps {
   onCancel: () => void;
 }
 
-export type CreateRoomProps = SettingsProps;
-
 export function Settings({
   initialSettings,
   onSave,

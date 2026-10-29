@@ -29,6 +29,7 @@ export function Landing({ onJoin, onCreate }: LandingProps) {
     handleNameChange,
     handleColorChange,
     handleDigitChange,
+    handleDigitPaste,
     handleDigitKeyDown,
     handleCreateSubmit,
     handleJoinSubmit,
@@ -96,6 +97,7 @@ export function Landing({ onJoin, onCreate }: LandingProps) {
             digits={digits}
             inputRefs={inputRefs}
             onDigitChange={handleDigitChange}
+            onDigitPaste={handleDigitPaste}
             onDigitKeyDown={handleDigitKeyDown}
             onJoin={handleJoinSubmit}
           />

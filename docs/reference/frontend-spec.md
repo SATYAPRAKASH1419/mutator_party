@@ -34,7 +34,7 @@ apps/client/
     main.ts              boot, router (/ and /r/:code), screen switching
     net/                 connection.ts, mockServer.ts, inputSender.ts, interpolation.ts, prediction.ts
     game/                GameScene.ts, ArenaView.ts, PlayerView.ts, effects.ts, audio.ts, theme.ts
-    ui/                  Landing, CreateRoom, Lobby, Hud, Pick, Results, Final, Toasts, Banner (Preact)
+    ui/                  Landing, Settings, Lobby, Hud, Pick, Results, Final, Toasts, Banner (Preact)
     ads/                 ads.ts (interface plus no-op), consent.ts
     util/                storage.ts, track.ts, device.ts
     styles/              tokens.css, base.css

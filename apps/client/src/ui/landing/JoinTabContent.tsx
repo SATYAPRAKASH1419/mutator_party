@@ -5,6 +5,7 @@ interface JoinTabContentProps {
   digits: string[];
   inputRefs: RefObject<HTMLInputElement>[];
   onDigitChange: (index: number, val: string) => void;
+  onDigitPaste: (e: ClipboardEvent) => void;
   onDigitKeyDown: (index: number, e: KeyboardEvent) => void;
   onJoin: () => void;
 }
@@ -13,6 +14,7 @@ export function JoinTabContent({
   digits,
   inputRefs,
   onDigitChange,
+  onDigitPaste,
   onDigitKeyDown,
   onJoin,
 }: JoinTabContentProps) {
@@ -33,6 +35,7 @@ export function JoinTabContent({
         digits={digits}
         inputRefs={inputRefs}
         onDigitChange={onDigitChange}
+        onDigitPaste={onDigitPaste}
         onDigitKeyDown={onDigitKeyDown}
       />
 
@@ -49,4 +52,3 @@ export function JoinTabContent({
     </div>
   );
 }
-

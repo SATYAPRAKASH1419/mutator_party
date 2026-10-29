@@ -4,6 +4,7 @@ interface JoinCodeBoxesProps {
   digits: string[];
   inputRefs: RefObject<HTMLInputElement>[];
   onDigitChange: (index: number, val: string) => void;
+  onDigitPaste: (e: ClipboardEvent) => void;
   onDigitKeyDown: (index: number, e: KeyboardEvent) => void;
 }
 
@@ -11,6 +12,7 @@ export function JoinCodeBoxes({
   digits,
   inputRefs,
   onDigitChange,
+  onDigitPaste,
   onDigitKeyDown,
 }: JoinCodeBoxesProps) {
   return (
@@ -32,7 +34,7 @@ export function JoinCodeBoxes({
             ref={inputRefs[idx]}
             type="text"
             value={digit}
-            maxLength={2}
+            maxLength={1}
             inputMode="text"
             autoCapitalize="characters"
             autoCorrect="off"
@@ -40,6 +42,7 @@ export function JoinCodeBoxes({
             onInput={(e) =>
               onDigitChange(idx, (e.target as HTMLInputElement).value)
             }
+            onPaste={onDigitPaste}
             onKeyDown={(e) => onDigitKeyDown(idx, e)}
             className="mp-code-box"
             style={{
@@ -66,4 +69,3 @@ export function JoinCodeBoxes({
     </div>
   );
 }
-
