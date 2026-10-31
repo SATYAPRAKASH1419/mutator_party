@@ -1,4 +1,4 @@
-import { useState, useEffect } from "preact/hooks";
+import { useState, useEffect, useRef } from "preact/hooks";
 import { appStore, type RoomClientState } from "../app/store";
 import { clientLog } from "../util/logger";
 import { showToast } from "../util/toast";
@@ -17,22 +17,25 @@ export interface PickOfferData {
 
 export function useRoomConnection() {
   const [connection, setConnection] = useState<RoomConnection | null>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
+  const [isRestoringRoom] = useState(() => {
+    const hasRoomRoute = /\/r\/([A-Za-z0-9]{5})/i.test(window.location.pathname);
+    const navigation = performance.getEntriesByType(
+      "navigation",
+    )[0] as PerformanceNavigationTiming | undefined;
+    return (
+      hasRoomRoute &&
+      navigation?.type === "reload" &&
+      Boolean(appStore.getState().profile.name)
+    );
+  });
+  const [isConnecting, setIsConnecting] = useState(isRestoringRoom);
   const [isMuted, setIsMuted] = useState(false);
   const [pickOffer, setPickOffer] = useState<PickOfferData | null>(null);
+  const reconnectAttempted = useRef(false);
 
   useEffect(() => {
     sound.setMuted(isMuted);
   }, [isMuted]);
-
-  // Check URL for join link: /r/:code
-  useEffect(() => {
-    const match = window.location.pathname.match(/\/r\/([A-Za-z0-9]{5})/i);
-    if (match && match[1]) {
-      const code = match[1].toUpperCase();
-      appStore.setState({ roomCode: code });
-    }
-  }, []);
 
   const handleConnect = async (opts: ConnectOptions) => {
     clientLog.action("Initiate room connection", opts);
@@ -54,6 +57,9 @@ export function useRoomConnection() {
           result = await colyseus.connect(opts);
           conn = colyseus;
         } catch (colyseusErr) {
+          if (opts.code) {
+            throw colyseusErr;
+          }
           console.warn(
             "Backend server unreachable at ws://localhost:2567. Falling back to local Mock Server with bots:",
             colyseusErr,
@@ -101,6 +107,15 @@ export function useRoomConnection() {
       conn.on("emote", (emoteData: any) => {
         clientLog.net("Received emote", emoteData);
         window.dispatchEvent(new CustomEvent("mp:emote", { detail: emoteData }));
+      });
+
+      conn.on("event", (event: any) => {
+        if (
+          event?.type === "toast" &&
+          appStore.getState().gameState?.phase === "lobby"
+        ) {
+          showToast(event.payload?.message || event.message, "warning");
+        }
       });
 
       conn.on("state", (s: RoomClientState) => {
@@ -151,12 +166,46 @@ export function useRoomConnection() {
       });
     } catch (err: any) {
       console.error("Connection failed:", err);
-      showToast(err?.message || "Failed to join room.", "error");
+      showToast(
+        opts.code
+          ? "Room not found. Check the code and try again."
+          : err?.message || "Failed to join room.",
+        "error",
+      );
       appStore.setScreen("landing");
     } finally {
       setIsConnecting(false);
     }
   };
+
+  // Restore a room connection after a browser refresh on /r/:code.
+  useEffect(() => {
+    const match = window.location.pathname.match(/\/r\/([A-Za-z0-9]{5})/i);
+    if (!match?.[1]) return;
+
+    const code = match[1].toUpperCase();
+    appStore.setState({ roomCode: code });
+
+    const profile = appStore.getState().profile;
+    const navigation = performance.getEntriesByType(
+      "navigation",
+    )[0] as PerformanceNavigationTiming | undefined;
+    if (
+      navigation?.type !== "reload" ||
+      !profile.name ||
+      reconnectAttempted.current
+    ) {
+      return;
+    }
+
+    reconnectAttempted.current = true;
+    void handleConnect({
+      code,
+      name: profile.name,
+      color: profile.color,
+      playerId: profile.playerId,
+    });
+  }, []);
 
   const handleJoin = (code: string) => {
     clientLog.action("Join room submit", { code });
@@ -251,6 +300,7 @@ export function useRoomConnection() {
   return {
     connection,
     isConnecting,
+    isRestoringRoom,
     isMuted,
     setIsMuted,
     pickOffer,
@@ -266,4 +316,3 @@ export function useRoomConnection() {
     handleKick,
   };
 }
-

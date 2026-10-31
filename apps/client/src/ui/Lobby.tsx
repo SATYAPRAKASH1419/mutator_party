@@ -10,6 +10,7 @@ import { LobbyActions } from "./lobby/LobbyActions";
 import { BannerAd } from "./components/BannerAd";
 import { RulesModal } from "./lobby/RulesModal";
 import { useLobbyEmotes } from "./lobby/useLobbyEmotes";
+import { useRulesSummary } from "./lobby/useRulesSummary";
 
 interface LobbyProps {
   roomCode: string;
@@ -38,6 +39,7 @@ export function Lobby({
 }: LobbyProps) {
   const [isReady, setIsReady] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const rulesSummary = useRulesSummary(settings);
 
   const handleToggle = () => {
     clientLog.action("Lobby ready button clicked", { nextReady: !isReady });
@@ -229,12 +231,12 @@ export function Lobby({
           font-weight: 900;
         }
 
-        /* Footer Row: Banner Ad on LEFT, Start Game on RIGHT */
+        /* Footer Row: Start Game only (ad moved below card) */
         .mp-lobby-footer-row {
           display: flex;
           flex-direction: row;
           align-items: center;
-          justify-content: space-between;
+          justify-content: flex-end;
           gap: clamp(12px, 2vw, 28px);
           width: 100%;
           padding-top: clamp(8px, 1.4vh, 12px);
@@ -242,21 +244,79 @@ export function Lobby({
           flex-shrink: 0;
         }
 
-        /* Left Side: Google Banner Ad Slot */
-        .mp-footer-ad-side {
-          flex: 1;
-          max-width: 440px;
+        /* Settings Summary Strip */
+        .mp-settings-strip {
           display: flex;
           align-items: center;
-          justify-content: flex-start;
+          flex-wrap: wrap;
+          gap: 6px;
+          padding: 6px 4px;
+          border-top: 1.5px dashed rgba(27, 27, 58, 0.12);
+        }
+
+        .mp-setting-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          background: rgba(27, 27, 58, 0.06);
+          border: 1.5px solid rgba(27, 27, 58, 0.14);
+          border-radius: 9999px;
+          padding: 2px 10px;
+          font-family: var(--font-display);
+          font-size: 12px;
+          font-weight: 800;
+          color: var(--mp-ink, #1B1B3A);
+          white-space: nowrap;
+        }
+
+        .mp-settings-edit-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          background: #FFC93C;
+          border: 1.5px solid var(--mp-ink, #1B1B3A);
+          border-radius: 9999px;
+          padding: 2px 10px;
+          font-family: var(--font-display);
+          font-size: 12px;
+          font-weight: 800;
+          color: var(--mp-ink, #1B1B3A);
+          cursor: pointer;
+          transition: transform 0.1s ease;
+        }
+        .mp-settings-edit-btn:hover { transform: translateY(-1px); }
+
+        /* Ad below card */
+        .mp-lobby-ad-below {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+          margin-top: 16px;
+          width: 100%;
+        }
+
+        .mp-ad-label {
+          font-size: 10px;
+          color: #94A3B8;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          align-self: flex-start;
+          margin-left: 4px;
         }
 
         /* Right Side: Primary Game Launchpad */
         .mp-footer-action-side {
-          flex: 1;
           display: flex;
           align-items: center;
           justify-content: flex-end;
+          width: 100%;
+        }
+
+        /* Mobile / Small Devices inline ad slot (hidden on desktop) */
+        .mp-footer-ad-mobile {
+          display: none;
         }
 
         /* Landscape Mobile adjustments */
@@ -274,22 +334,55 @@ export function Lobby({
           .mp-stage-title {
             font-size: 13.5px;
           }
-          .mp-lobby-footer-row {
-            padding-top: 4px;
-            gap: 8px;
-          }
         }
 
-        /* Portrait Mobile fallback */
-        @media (max-width: 600px) and (orientation: portrait) {
-          .mp-lobby-footer-row {
-            flex-direction: column-reverse;
-            gap: 10px;
+        /* Mobile or Small Devices: Ad slot on LEFT, Start Match on RIGHT, hide settings strip */
+        @media (max-width: 768px), (max-height: 600px) {
+          .mp-lobby-ad-below {
+            display: none !important;
           }
-          .mp-footer-ad-side,
+
+          /* Hide rounds, lives, powerups, bots bar on mobile screen */
+          .mp-settings-strip {
+            display: none !important;
+          }
+
+          .mp-lobby-footer-row {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 10px !important;
+            padding-top: 6px !important;
+          }
+
+          /* Ad slot on the LEFT */
+          .mp-footer-ad-mobile {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            justify-content: center !important;
+            flex: 1 1 0 !important;
+            min-width: 0 !important;
+            max-width: 380px !important;
+          }
+
+          .mp-footer-ad-mobile .mp-ad-label {
+            font-size: 9px;
+            margin-bottom: 2px;
+            align-self: flex-start;
+          }
+
+          .mp-footer-ad-mobile .mp-google-ad-wrap {
+            max-width: 100% !important;
+            height: 44px !important;
+          }
+
+          /* Start Match action on the RIGHT */
           .mp-footer-action-side {
-            max-width: 100%;
-            justify-content: center;
+            flex: 0 0 auto !important;
+            width: auto !important;
+            justify-content: flex-end !important;
           }
         }
       `}</style>
@@ -322,14 +415,51 @@ export function Lobby({
             <QuickEmotesBar onEmote={handleLocalEmote} />
           </div>
 
-          {/* 3. FOOTER: BANNER AD (LEFT) + START GAME (RIGHT) */}
+          {/* Settings Summary Strip */}
+          <div className="mp-settings-strip">
+            <span
+              className="mp-setting-chip"
+              style={{
+                background: "#8B5CF6",
+                color: "#FFFFFF",
+                fontWeight: 900,
+                border: "2px solid #1B1B3A",
+              }}
+            >
+              🎯 {rulesSummary.presetName}
+            </span>
+            <span className="mp-setting-chip">
+              🎮 {settings?.match?.rounds ?? 5} rounds
+            </span>
+            <span className="mp-setting-chip">
+              ❤️ {settings?.respawn?.mode === "unlimited" ? "∞ lives" : settings?.respawn?.mode === "off" ? "1 life" : `${settings?.respawn?.lives ?? 3} lives`}
+            </span>
+            <span className="mp-setting-chip">
+              ⚡ Power-ups {settings?.items?.enabled === false ? "off" : "on"}
+            </span>
+            <span className="mp-setting-chip">
+              🤖 Bots {settings?.match?.fillBots === false ? "off" : "on"}
+            </span>
+            {isHost && onEditRules && (
+              <button
+                type="button"
+                className="mp-settings-edit-btn"
+                onClick={onEditRules}
+              >
+                Edit
+              </button>
+            )}
+          </div>
+
+          {/* 3. FOOTER: BANNER AD (LEFT) + START GAME (RIGHT) FOR MOBILE/SMALL DEVICES */}
           <div className="mp-lobby-footer-row">
-            {/* Left: Google Ads Banner Slot */}
-            <div className="mp-footer-ad-side">
-              <BannerAd slotId="mp-lobby-google-ad" format="horizontal" />
+            {/* Mobile / Small Devices: Ad slot on the LEFT */}
+            <div className="mp-footer-ad-mobile">
+              <div className="mp-ad-label">Advertisement</div>
+              <BannerAd slotId="mp-lobby-google-ad-mobile" format="horizontal" />
             </div>
 
-            {/* Right: Primary Game Launchpad */}
+            {/* Start Match button on the RIGHT */}
             <div className="mp-footer-action-side">
               <LobbyActions
                 isHost={isHost}
@@ -340,6 +470,12 @@ export function Lobby({
               />
             </div>
           </div>
+        </div>
+
+        {/* Ad below card — clear of primary button (AdSense policy) */}
+        <div className="mp-lobby-ad-below">
+          <div className="mp-ad-label">Advertisement</div>
+          <BannerAd slotId="mp-lobby-google-ad" format="horizontal" />
         </div>
       </div>
 

@@ -8,6 +8,8 @@ export * from './constants.js';
 export * from './rng.js';
 export * from './arena.js';
 export * from './settings.js';
+export * from './presets.js';
+export * from './settingsCode.js';
 export * from './input.js';
 export * from './theme.js';
 export * from './types.js';

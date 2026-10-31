@@ -94,7 +94,7 @@ export class GameRoom extends Room<{
 
     // Generate room code and publish in metadata for lookup (safe in unit tests)
     this.roomCode = options?.code
-      ? (normalizeRoomCode(options.code) || generateRoomCode())
+      ? normalizeRoomCode(options.code) || generateRoomCode()
       : generateRoomCode();
     this.state.roomCode = this.roomCode;
     if ((this as any)._listing) {
@@ -181,13 +181,17 @@ export class GameRoom extends Room<{
 
     // Validate Origin header
     if (context?.headers?.origin && serverConfig.ALLOWED_ORIGINS) {
-      if (!validateOrigin(context.headers.origin, serverConfig.ALLOWED_ORIGINS)) {
+      if (
+        !validateOrigin(context.headers.origin, serverConfig.ALLOWED_ORIGINS)
+      ) {
         throw new Error("ORIGIN_NOT_ALLOWED");
       }
     }
 
     // IP rate limit check
-    const ip = context ? IpRateLimiter.extractIp(context) : (options?.ip ?? "127.0.0.1");
+    const ip = context
+      ? IpRateLimiter.extractIp(context)
+      : (options?.ip ?? "127.0.0.1");
     if (!globalRateLimiter.allowJoin(ip)) {
       rateLimitDropsCounter.inc({ type: "join" });
       roomLogger.rateLimitExceeded(ip, "join");
@@ -251,8 +255,15 @@ export class GameRoom extends Room<{
     this.presenceManager.registerPlayer(client.sessionId);
 
     activePlayersGauge.inc();
-    roomLogger.playerJoined(this.roomId, this.roomCode, this.state.players.size);
-    roomLogger.action(this.roomId, this.roomCode, "player_join", { sessionId: client.sessionId, isHost: player.host });
+    roomLogger.playerJoined(
+      this.roomId,
+      this.roomCode,
+      this.state.players.size,
+    );
+    roomLogger.action(this.roomId, this.roomCode, "player_join", {
+      sessionId: client.sessionId,
+      isHost: player.host,
+    });
 
     if (typeof client?.send === "function") {
       client.send("room:info", {
@@ -302,8 +313,12 @@ export class GameRoom extends Room<{
       );
       if (nextHost) {
         nextHost.host = true;
-        roomLogger.action(this.roomId, this.roomCode, "host_migrated", { newHostId: nextHost.id });
-        const hostClient = this.clients.find((c) => c.sessionId === nextHost.id);
+        roomLogger.action(this.roomId, this.roomCode, "host_migrated", {
+          newHostId: nextHost.id,
+        });
+        const hostClient = this.clients.find(
+          (c) => c.sessionId === nextHost.id,
+        );
         if (hostClient && typeof hostClient.send === "function") {
           hostClient.send("room:info", {
             code: this.roomCode,
@@ -767,7 +782,10 @@ export class GameRoom extends Room<{
       if (player) {
         player.ready =
           typeof message?.value === "boolean" ? message.value : !player.ready;
-        roomLogger.action(this.roomId, this.roomCode, "ready", { sessionId: client.sessionId, ready: player.ready });
+        roomLogger.action(this.roomId, this.roomCode, "ready", {
+          sessionId: client.sessionId,
+          ready: player.ready,
+        });
       }
     });
 
@@ -792,7 +810,20 @@ export class GameRoom extends Room<{
       }
 
       // Between rounds (results, pick, intro), only theme and twistPicker are editable (GAP-07)
+      // For Tournament mode, settings are strictly locked once the match starts.
       if (this.state.phase !== "lobby") {
+        const isTournament =
+          this.settings.arena.layout === "per_match" &&
+          !this.settings.items.enabled &&
+          !this.settings.match.fillBots;
+        if (isTournament) {
+          client.send("error", {
+            code: "SETTINGS_LOCKED",
+            message: "Tournament settings are locked once the match starts.",
+          });
+          return;
+        }
+
         const partial = partialSettings as Record<string, any>;
         const keys = Object.keys(partial || {});
         const allowedMidMatch = keys.every(
@@ -816,7 +847,9 @@ export class GameRoom extends Room<{
       this.maxClients = this.settings.match.maxPlayers;
       this.phaseController.updateSettings(this.settings);
       this.broadcast("settings", this.settings);
-      roomLogger.action(this.roomId, this.roomCode, "settings_updated", { sessionId: client.sessionId });
+      roomLogger.action(this.roomId, this.roomCode, "settings_updated", {
+        sessionId: client.sessionId,
+      });
     });
 
     // 3. Start game (host only)
@@ -844,6 +877,20 @@ export class GameRoom extends Room<{
         (p) => !p.isBot && p.connected,
       ).length;
 
+      const unreadyPlayers = Array.from(this.state.players.values()).filter(
+        (p) => !p.isBot && p.connected && !p.host && !p.ready,
+      );
+      if (unreadyPlayers.length > 0) {
+        const names = unreadyPlayers.map((p) => p.name).join(", ");
+        this.broadcast("toast", {
+          message: `Waiting for ${names} to ready up before starting the match.`,
+        });
+        client.send("error", {
+          code: "PLAYERS_NOT_READY",
+          message: "All players must be ready before starting.",
+        });
+        return;
+      }
       if (!this.settings.match.fillBots && currentHumanCount < minRequired) {
         client.send("error", {
           code: "NOT_ENOUGH_PLAYERS",
@@ -878,7 +925,10 @@ export class GameRoom extends Room<{
         }
       }
 
-      roomLogger.action(this.roomId, this.roomCode, "start_game", { sessionId: client.sessionId, playersCount: this.state.players.size });
+      roomLogger.action(this.roomId, this.roomCode, "start_game", {
+        sessionId: client.sessionId,
+        playersCount: this.state.players.size,
+      });
       this.phaseController.startMatch(this.getPlayerSummaries());
     });
 
@@ -906,7 +956,10 @@ export class GameRoom extends Room<{
     this.onMessage("pick", (client, message: { index: number }) => {
       if (!this.isMessageValid(message)) return;
       if (typeof message?.index === "number") {
-        roomLogger.action(this.roomId, this.roomCode, "pick_twist", { sessionId: client.sessionId, index: message.index });
+        roomLogger.action(this.roomId, this.roomCode, "pick_twist", {
+          sessionId: client.sessionId,
+          index: message.index,
+        });
         this.phaseController.handlePick(
           client.sessionId,
           message.index,
@@ -930,9 +983,27 @@ export class GameRoom extends Room<{
       const targetId = message?.playerId;
       if (!targetId || targetId === client.sessionId) return;
 
-      roomLogger.action(this.roomId, this.roomCode, "kick_player", { hostSessionId: client.sessionId, targetPlayerId: targetId });
-      const targetClient = this.clients.find((c) => c.sessionId === targetId);
-      this.presenceManager.kick(targetId);
+      const targetEntry = Array.from(this.state.players.entries()).find(
+        ([sessionId, targetPlayer]) =>
+          sessionId === targetId || targetPlayer.id === targetId,
+      );
+      if (!targetEntry) {
+        client.send("error", {
+          code: "PLAYER_NOT_FOUND",
+          message: "That player is no longer in the room.",
+        });
+        return;
+      }
+
+      const [targetSessionId, targetPlayer] = targetEntry;
+      roomLogger.action(this.roomId, this.roomCode, "kick_player", {
+        hostSessionId: client.sessionId,
+        targetPlayerId: targetPlayer.id,
+      });
+      const targetClient = this.clients.find(
+        (c) => c.sessionId === targetSessionId,
+      );
+      this.presenceManager.kick(targetSessionId);
       kicksCounter.inc();
 
       if (targetClient) {
@@ -945,7 +1016,10 @@ export class GameRoom extends Room<{
       if (!this.isMessageValid(message)) return;
       const player = this.state.players.get(client.sessionId);
       if (player && typeof message?.id === "string") {
-        roomLogger.action(this.roomId, this.roomCode, "emote", { sessionId: client.sessionId, emoteId: message.id });
+        roomLogger.action(this.roomId, this.roomCode, "emote", {
+          sessionId: client.sessionId,
+          emoteId: message.id,
+        });
         this.broadcast("emote", { playerId: client.sessionId, id: message.id });
       }
     });
@@ -963,7 +1037,9 @@ export class GameRoom extends Room<{
       if (this.state.phase !== "final") {
         return;
       }
-      roomLogger.action(this.roomId, this.roomCode, "rematch", { sessionId: client.sessionId });
+      roomLogger.action(this.roomId, this.roomCode, "rematch", {
+        sessionId: client.sessionId,
+      });
       for (const p of this.state.players.values()) {
         p.score = 0;
         p.hits = 0;
@@ -977,7 +1053,9 @@ export class GameRoom extends Room<{
       const player = this.state.players.get(client.sessionId);
       if (!player || !player.host) return;
       if (this.state.phase === "results") {
-        roomLogger.action(this.roomId, this.roomCode, "next_round", { sessionId: client.sessionId });
+        roomLogger.action(this.roomId, this.roomCode, "next_round", {
+          sessionId: client.sessionId,
+        });
         this.phaseController.skipResultsTimer(this.getPlayerSummaries());
       }
     });

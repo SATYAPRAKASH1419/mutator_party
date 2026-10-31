@@ -1,6 +1,9 @@
 import { useState } from "preact/hooks";
 import type { RoomSettings } from "@mutator-party/shared";
 import { useRulesSummary } from "./useRulesSummary";
+import { GameModeList, GameRuleIcon } from "../components/GameIcons";
+import { IconSettings } from "../components/Icons";
+import { GameChevronIcon } from "./LobbyIcons";
 
 interface ExpandableRulesProps {
   settings: Partial<RoomSettings> | null;
@@ -32,20 +35,24 @@ export function ExpandableRules({
             className="mp-rules-triangle"
             style={{
               transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "transform 0.2s ease",
             }}
           >
-            ▶
+            <GameChevronIcon size={9} />
           </span>
           <span>Rules</span>
         </div>
 
         {/* Short form rules display when collapsed */}
         <div className="mp-rules-short-chips">
-          <span className="mp-rules-chip">🏆 {summary.rounds} Rds</span>
-          <span className="mp-rules-chip">🎮 {summary.modeIcons}</span>
-          <span className="mp-rules-chip">🌀 {summary.twistsCount} Twists</span>
-          <span className="mp-rules-chip">❤️ {summary.respawnText}</span>
-          <span className="mp-rules-chip">🤖 Bots: {summary.botSkill}</span>
+          <span className="mp-rules-chip"><GameRuleIcon type="match" /> {summary.rounds} Rds</span>
+          <span className="mp-rules-chip"><GameModeList modes={summary.modeIcons} size={14} /></span>
+          <span className="mp-rules-chip">Twists: {summary.twistsCount}</span>
+          <span className="mp-rules-chip"><GameRuleIcon type="respawn" /> {summary.respawnText}</span>
+          <span className="mp-rules-chip"><GameRuleIcon type="bots" /> Bots: {summary.botSkill}</span>
         </div>
 
         {/* Edit Rules Pill (Host only) */}
@@ -59,7 +66,10 @@ export function ExpandableRules({
             }}
             title="Configure room settings"
           >
-            <span>⚙️ Edit</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+              <IconSettings size={12} />
+              <span>Edit</span>
+            </span>
           </button>
         )}
       </div>
@@ -77,7 +87,7 @@ export function ExpandableRules({
 
             <div className="mp-rules-item">
               <span className="mp-rules-item-label">Game Modes</span>
-              <span className="mp-rules-item-val">{summary.modeIcons}</span>
+              <span className="mp-rules-item-val">              <GameModeList modes={summary.modeIcons} separator /></span>
             </div>
 
             <div className="mp-rules-item">
@@ -140,7 +150,10 @@ export function ExpandableRules({
                 className="mp-btn-edit-rules"
                 onClick={onEditRules}
               >
-                <span>⚙️ Open Full Settings</span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                  <IconSettings size={13} />
+                  <span>Open Full Settings</span>
+                </span>
               </button>
             )}
           </div>

@@ -36,6 +36,7 @@ export function App() {
   const {
     connection,
     isConnecting,
+    isRestoringRoom,
     isMuted,
     setIsMuted,
     pickOffer,
@@ -85,16 +86,18 @@ export function App() {
       <Toast />
 
       {/* ── Screen: Landing ────────────────────────────────────────────────── */}
-      {currentScreen === "landing" && (
+      {currentScreen === "landing" && (!isRestoringRoom || !isConnecting) && (
         <div className="screen-container">
           <Landing onJoin={handleJoin} onCreate={handleCreateRoom} />
         </div>
       )}
 
-      {/* ── Screen: Settings (Host only) ────────────────────────────────────── */}
-      {currentScreen === "settings" && isHost && (
+      {/* ── Screen: Settings ──────────────────────────────────────────────── */}
+      {currentScreen === "settings" && (
         <Settings
           initialSettings={settings || undefined}
+          isHost={isHost}
+          isLocked={gameState?.phase !== "lobby"}
           onSave={handleSaveSettings}
           onCancel={() => appStore.setScreen("lobby")}
         />

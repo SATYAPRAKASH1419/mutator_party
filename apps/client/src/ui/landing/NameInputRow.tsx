@@ -93,6 +93,19 @@ export function NameInputRow({
           {nameError}
         </div>
       )}
+
+      {/* Character counter */}
+      <div
+        style={{
+          fontSize: "11px",
+          fontWeight: 700,
+          color: name.length >= 14 ? "#E63946" : "#64748B",
+          textAlign: "right",
+          paddingRight: "4px",
+        }}
+      >
+        {name.length}/16
+      </div>
     </div>
   );
 }

@@ -1,3 +1,10 @@
+import {
+  GameBotAvatarIcon,
+  GameOpenSlotAvatarIcon,
+  GameBotBadgeIcon,
+  GameWaitIcon,
+} from "./LobbyIcons";
+
 interface BotSlotCardProps {
   fillBots: boolean;
 }
@@ -29,10 +36,11 @@ export function BotSlotCard({ fillBots }: BotSlotCardProps) {
         }
 
         .mp-bot-avatar-wrap {
-          margin-top: 10px;
-          font-size: 36px;
-          line-height: 1;
-          filter: grayscale(0.2) drop-shadow(0 2px 3px rgba(0,0,0,0.08));
+          margin-top: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          filter: drop-shadow(0 2px 3px rgba(0,0,0,0.08));
         }
 
         .mp-bot-name {
@@ -63,9 +71,13 @@ export function BotSlotCard({ fillBots }: BotSlotCardProps) {
         }
       `}</style>
 
-      {/* Bot Icon */}
+      {/* Bot / Open Slot SVG Avatar */}
       <div className="mp-bot-avatar-wrap">
-        <span>{fillBots ? "🤖" : "👤"}</span>
+        {fillBots ? (
+          <GameBotAvatarIcon size={38} />
+        ) : (
+          <GameOpenSlotAvatarIcon size={38} />
+        )}
       </div>
 
       {/* Label */}
@@ -75,7 +87,17 @@ export function BotSlotCard({ fillBots }: BotSlotCardProps) {
 
       {/* Status */}
       <div className="mp-bot-status">
-        {fillBots ? "Auto-joins" : "Waiting"}
+        {fillBots ? (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+            <GameBotBadgeIcon size={11} />
+            <span>Auto-joins</span>
+          </span>
+        ) : (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+            <GameWaitIcon size={11} />
+            <span>Open</span>
+          </span>
+        )}
       </div>
     </div>
   );

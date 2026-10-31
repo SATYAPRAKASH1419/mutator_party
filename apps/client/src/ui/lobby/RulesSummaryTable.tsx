@@ -1,5 +1,6 @@
 import { useMemo } from "preact/hooks";
 import { THEMES, type RoomSettings } from "@mutator-party/shared";
+import { GameModeList } from "../components/GameIcons";
 
 interface RulesSummaryTableProps {
   settings: Partial<RoomSettings> | null;
@@ -10,14 +11,6 @@ export function RulesSummaryTable({ settings }: RulesSummaryTableProps) {
 
   // Active Modes (🥊 Brawl, 💣 Bomb, 👑 Crown)
   const modePool = settings?.modes?.pool ?? ["brawl", "bomb", "crown"];
-  const modeIcons = useMemo(() => {
-    const icons: string[] = [];
-    if (modePool.includes("brawl")) icons.push("🥊");
-    if (modePool.includes("bomb")) icons.push("💣");
-    if (modePool.includes("crown")) icons.push("👑");
-    return icons.length > 0 ? icons.join(" ") : "🥊 💣 👑";
-  }, [modePool]);
-
   // Twists Summary
   const twistsCount = settings?.twists?.allowed?.length ?? 11;
   const twistRampText =
@@ -101,7 +94,7 @@ export function RulesSummaryTable({ settings }: RulesSummaryTableProps) {
         <div className="mp-rules-row">
           <span>Modes</span>
           <span style={{ fontSize: "15px", letterSpacing: "2px" }}>
-            {modeIcons}
+            <GameModeList modes={modePool} />
           </span>
         </div>
 

@@ -147,6 +147,42 @@ describe("GameRoom", () => {
     expect(room.state.phase).toBe("lobby");
   });
 
+  it("blocks an unready guest and broadcasts a ready-up alert", () => {
+    const room = new GameRoom();
+    room.onCreate({ settings: { match: { fillBots: true } } });
+
+    let errorSent: any = null;
+    let broadcastedType = "";
+    let broadcastedData: any = null;
+    room.broadcast = (type: any, data: any) => {
+      broadcastedType = type;
+      broadcastedData = data;
+    };
+
+    const host = {
+      sessionId: "s1",
+      send: (type: string, data: any) => {
+        if (type === "error") errorSent = data;
+      },
+    } as any;
+    const guest = { sessionId: "s2", send: () => {} } as any;
+
+    room.onJoin(host, {}, { name: "Host", playerId: "p1" });
+    room.onJoin(guest, {}, { name: "Guest", playerId: "p2" });
+
+    (room as any).onMessageEvents.emit("start", host, {});
+
+    expect(errorSent?.code).toBe("PLAYERS_NOT_READY");
+    expect(broadcastedType).toBe("toast");
+    expect(broadcastedData.message).toContain("Guest");
+    expect(room.state.phase).toBe("lobby");
+
+    (room as any).onMessageEvents.emit("ready", guest, { value: true });
+    (room as any).onMessageEvents.emit("start", host, {});
+
+    expect(room.state.phase).toBe("intro");
+  });
+
   it("auto-fills bots up to capacity when fillBots is true", () => {
     const room = new GameRoom();
     room.onCreate({
@@ -204,6 +240,31 @@ describe("GameRoom", () => {
     expect(() =>
       room.onAuth(client2, { name: "TroubleMaker", playerId: "s2" }),
     ).toThrow("BANNED");
+  });
+
+  it("allows host to kick a player using their persistent player id", () => {
+    const room = new GameRoom();
+    room.onCreate({});
+
+    let kickedCode: number | undefined;
+    const host = { sessionId: "host-session", send: () => {} } as any;
+    const guest = {
+      sessionId: "guest-session",
+      leave: (code: number) => {
+        kickedCode = code;
+      },
+    } as any;
+
+    room.onJoin(host, {}, { name: "Host", playerId: "host-player" });
+    room.onJoin(guest, {}, { name: "Guest", playerId: "guest-player" });
+    room.clients.push(host, guest);
+
+    (room as any).onMessageEvents.emit("kick", host, {
+      playerId: "guest-player",
+    });
+
+    expect(kickedCode).toBe(4001);
+    expect(room.presenceManager.isBanned("guest-session")).toBe(true);
   });
 
   it("broadcasts emotes to all clients", () => {

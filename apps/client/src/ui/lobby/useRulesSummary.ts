@@ -1,21 +1,22 @@
 import { useMemo } from "preact/hooks";
-import { THEMES, type RoomSettings } from "@mutator-party/shared";
+import { THEMES, PRESETS, isConfigEqual, type RoomSettings } from "@mutator-party/shared";
 
 export function useRulesSummary(settings: Partial<RoomSettings> | null) {
   const rounds = settings?.match?.rounds ?? 5;
   const roundTime = settings?.match?.roundTime ?? "auto";
   const botSkill = settings?.match?.botSkill ?? "normal";
 
+  const presetName = useMemo(() => {
+    if (!settings) return "Chaos Party";
+    if (isConfigEqual(settings, PRESETS.chaosParty.config)) return "Chaos Party";
+    if (isConfigEqual(settings, PRESETS.classic.config)) return "Classic";
+    if (isConfigEqual(settings, PRESETS.tournament.config)) return "Tournament";
+    if (isConfigEqual(settings, PRESETS.chill.config)) return "Chill";
+    return "Custom";
+  }, [settings]);
+
   // Active Modes
   const modePool = settings?.modes?.pool ?? ["brawl", "bomb", "crown"];
-  const modeIcons = useMemo(() => {
-    const icons: string[] = [];
-    if (modePool.includes("brawl")) icons.push("🥊 Brawl");
-    if (modePool.includes("bomb")) icons.push("💣 Bomb");
-    if (modePool.includes("crown")) icons.push("👑 Crown");
-    return icons.length > 0 ? icons.join(" • ") : "🥊 💣 👑";
-  }, [modePool]);
-
   // Twists Summary
   const twistsCount = settings?.twists?.allowed?.length ?? 11;
   const twistRampText =
@@ -79,7 +80,7 @@ export function useRulesSummary(settings: Partial<RoomSettings> | null) {
     roundTime,
     botSkill,
     modePool,
-    modeIcons,
+    modeIcons: modePool,
     twistsCount,
     twistRampText,
     twistPickerText,
@@ -87,6 +88,6 @@ export function useRulesSummary(settings: Partial<RoomSettings> | null) {
     respawnText,
     powerUpsText,
     themeText,
+    presetName,
   };
 }
-

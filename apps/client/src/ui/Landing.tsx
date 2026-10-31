@@ -2,11 +2,21 @@ import { IconGamepad, IconLink } from "./components/Icons";
 import { LandingBackground } from "./landing/LandingBackground";
 import { LandingTitle } from "./landing/LandingTitle";
 import { NameInputRow } from "./landing/NameInputRow";
-import { ColorPaletteRow } from "./landing/ColorPaletteRow";
 import { CreateTabContent } from "./landing/CreateTabContent";
 import { JoinTabContent } from "./landing/JoinTabContent";
 import { LandingHeaderActions } from "./landing/LandingHeaderActions";
 import { useLandingForm } from "./landing/useLandingForm";
+
+// Quick Play icon — lightning bolt
+function IconQuickPlay({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M13 2L4.5 13.5H11L10 22L19.5 10H13L13 2Z"
+        fill="var(--mp-ink, #1B1B3A)" stroke="var(--mp-ink, #1B1B3A)" strokeWidth="1.5"
+        strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 interface LandingProps {
   onJoin: (code: string) => void;
@@ -19,7 +29,6 @@ export function Landing({ onJoin, onCreate }: LandingProps) {
     setActiveTab,
     name,
     nameError,
-    selectedColor,
     digits,
     isFullscreen,
     isMobile,
@@ -27,7 +36,6 @@ export function Landing({ onJoin, onCreate }: LandingProps) {
     handleToggleFullscreen,
     handleRollDice,
     handleNameChange,
-    handleColorChange,
     handleDigitChange,
     handleDigitPaste,
     handleDigitKeyDown,
@@ -60,11 +68,22 @@ export function Landing({ onJoin, onCreate }: LandingProps) {
           onRollDice={handleRollDice}
         />
 
-        {/* 8-Color Avatar Palette Row */}
-        <ColorPaletteRow
-          selectedColor={selectedColor}
-          onSelectColor={handleColorChange}
-        />
+        {/* Quick Play — biggest, most inviting button */}
+        <button
+          type="button"
+          className="mp-btn-cta"
+          onClick={handleCreateSubmit}
+          style={{
+            background: "var(--mp-sun, #FFC93C)",
+            fontSize: "clamp(16px, 2.2vw, 20px)",
+            height: "clamp(46px, 6vh, 56px)",
+            boxShadow: "0 5px 0 var(--mp-ink, #1B1B3A)",
+            gap: "10px",
+          }}
+        >
+          <IconQuickPlay size={22} />
+          <span>Quick Play</span>
+        </button>
 
         {/* Modern Game Style Tab Switcher */}
         <div className="mp-tab-switcher">
@@ -86,22 +105,25 @@ export function Landing({ onJoin, onCreate }: LandingProps) {
           </button>
         </div>
 
-        {/* Tab 1: Create Room */}
-        {activeTab === "create" && (
-          <CreateTabContent onCreate={handleCreateSubmit} />
-        )}
+        {/* Tab content — fixed min-height so card doesn't jump on tab switch */}
+        <div style={{ minHeight: "130px" }}>
+          {/* Tab 1: Create Room */}
+          {activeTab === "create" && (
+            <CreateTabContent onCreate={handleCreateSubmit} />
+          )}
 
-        {/* Tab 2: Join with Code */}
-        {activeTab === "join" && (
-          <JoinTabContent
-            digits={digits}
-            inputRefs={inputRefs}
-            onDigitChange={handleDigitChange}
-            onDigitPaste={handleDigitPaste}
-            onDigitKeyDown={handleDigitKeyDown}
-            onJoin={handleJoinSubmit}
-          />
-        )}
+          {/* Tab 2: Join with Code */}
+          {activeTab === "join" && (
+            <JoinTabContent
+              digits={digits}
+              inputRefs={inputRefs}
+              onDigitChange={handleDigitChange}
+              onDigitPaste={handleDigitPaste}
+              onDigitKeyDown={handleDigitKeyDown}
+              onJoin={handleJoinSubmit}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

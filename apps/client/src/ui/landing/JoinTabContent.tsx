@@ -45,6 +45,7 @@ export function JoinTabContent({
         onClick={onJoin}
         style={{
           background: "var(--mp-mint, #3DDC97)",
+          marginTop: "14px",
         }}
       >
         <span>Join Room</span>

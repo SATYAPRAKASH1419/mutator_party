@@ -1,3 +1,5 @@
+import { GameChatIcon, GameEmoteIcon } from "./LobbyIcons";
+
 interface QuickEmotesBarProps {
   onEmote: (emoji: string) => void;
 }
@@ -73,7 +75,7 @@ export function QuickEmotesBar({ onEmote }: QuickEmotesBarProps) {
 
       <span className="mp-emotes-label">
         <span>React</span>
-        <span>💬</span>
+        <GameChatIcon size={14} />
       </span>
 
       <div className="mp-emotes-list">
@@ -85,7 +87,7 @@ export function QuickEmotesBar({ onEmote }: QuickEmotesBarProps) {
             onClick={() => onEmote(emoji)}
             title={`React with ${emoji}`}
           >
-            {emoji}
+            <GameEmoteIcon emote={emoji} size={20} />
           </button>
         ))}
       </div>

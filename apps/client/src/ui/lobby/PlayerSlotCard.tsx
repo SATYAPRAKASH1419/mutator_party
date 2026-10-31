@@ -1,5 +1,13 @@
 import { PLAYER_COLORS } from "@mutator-party/shared";
 import { AvatarHead } from "../components/AvatarHead";
+import { IconClose } from "../components/Icons";
+import {
+  GameCrownIcon,
+  GameCheckIcon,
+  GameWaitIcon,
+  GameEmoteIcon,
+  GameDevilHorn,
+} from "./LobbyIcons";
 
 interface PlayerSlotCardProps {
   name: string;
@@ -293,14 +301,16 @@ export function PlayerSlotCard({
             boxShadow: "1px 2px 0 #1B1B3A",
           }}
         >
-          ✕
+          <IconClose size={12} strokeWidth={3} />
         </button>
       )}
 
       {/* Comic Speech Bubble */}
       {activeEmote && (
         <div className="mp-speech-bubble" key={`bubble_${activeEmote}_${activeEmoteKey || 0}`}>
-          <span className="mp-bubble-emoji">{activeEmote}</span>
+          <span className="mp-bubble-emoji">
+            <GameEmoteIcon emote={activeEmote} size={24} />
+          </span>
           <span className="mp-bubble-tail" />
         </div>
       )}
@@ -313,13 +323,17 @@ export function PlayerSlotCard({
         {/* Devil Horns when emoting 😈 */}
         {isDevilEmote && (
           <div className="mp-devil-horns">
-            <span className="mp-devil-horn mp-horn-left">▲</span>
-            <span className="mp-devil-horn mp-horn-right">▲</span>
+            <GameDevilHorn side="left" size={14} />
+            <GameDevilHorn side="right" size={14} />
           </div>
         )}
 
         {/* Host Crown sitting directly on avatar so it jumps together! */}
-        {isHost && !isDevilEmote && <span className="mp-pod-crown">👑</span>}
+        {isHost && !isDevilEmote && (
+          <span className="mp-pod-crown">
+            <GameCrownIcon size={18} />
+          </span>
+        )}
 
         <AvatarHead
           color={colorHex}
@@ -337,7 +351,22 @@ export function PlayerSlotCard({
       <div
         className={`mp-pod-status ${isHost ? "host" : isReady ? "ready" : "waiting"}`}
       >
-        {isHost ? "👑 Host" : isReady ? "✓ Ready" : "⏳ Wait"}
+        {isHost ? (
+          <>
+            <GameCrownIcon size={12} />
+            <span>Host</span>
+          </>
+        ) : isReady ? (
+          <>
+            <GameCheckIcon size={11} />
+            <span>Ready</span>
+          </>
+        ) : (
+          <>
+            <GameWaitIcon size={11} />
+            <span>Wait</span>
+          </>
+        )}
       </div>
     </div>
   );

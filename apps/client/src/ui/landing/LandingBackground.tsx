@@ -6,7 +6,7 @@ export function SunWithGlow() {
       style={{
         position: "absolute",
         top: "clamp(12px, 3.5vw, 28px)",
-        right: "clamp(12px, 7vw, 105px)",
+        right: "clamp(150px, 18vw, 220px)",
         width: "clamp(75px, 14vw, 120px)",
         height: "clamp(75px, 14vw, 120px)",
         pointerEvents: "none",
@@ -342,7 +342,7 @@ export function LandingBackground() {
         className="mp-anim mp-bg-island"
         style={{
           position: "absolute",
-          bottom: "-15px",
+          bottom: "0px",
           left: "min(4vw, 40px)",
           zIndex: 2,
           pointerEvents: "none",
@@ -356,7 +356,7 @@ export function LandingBackground() {
         className="mp-anim mp-bg-island"
         style={{
           position: "absolute",
-          bottom: "-20px",
+          bottom: "5px",
           right: "min(5vw, 45px)",
           zIndex: 2,
           pointerEvents: "none",
@@ -365,6 +365,40 @@ export function LandingBackground() {
       >
         <FloatingIslandRight />
       </div>
+
+      {/* Footer links */}
+      <footer
+        style={{
+          position: "absolute",
+          bottom: "8px",
+          left: 0,
+          right: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "16px",
+          zIndex: 10,
+          pointerEvents: "none",
+        }}
+      >
+        {(["How to Play", "Privacy", "Contact"] as const).map((label) => (
+          <a
+            key={label}
+            href={`/${label.toLowerCase().replace(/ /g, "-")}`}
+            style={{
+              fontSize: "11px",
+              fontWeight: 800,
+              color: "var(--mp-ink, #1B1B3A)",
+              opacity: 0.55,
+              textDecoration: "none",
+              pointerEvents: "auto",
+              letterSpacing: "0.3px",
+            }}
+          >
+            {label}
+          </a>
+        ))}
+      </footer>
     </>
   );
 }

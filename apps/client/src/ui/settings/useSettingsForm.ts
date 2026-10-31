@@ -1,317 +1,389 @@
-import { useState } from "preact/hooks";
+import { useState, useMemo, useEffect } from "preact/hooks";
 import {
-  DEFAULTS,
-  MODES,
-  TWISTS,
-  ITEMS,
-  type RoomSettings,
+  type GameConfig,
+  type PresetId,
+  type CustomPreset,
   type Mode,
   type Twist,
   type Item,
   type Theme,
+  PRESETS,
+  MODES,
+  TWISTS,
+  THEMES,
+  HARSH_TWISTS,
+  computeMatchPreview,
+  isConfigEqual,
+  encodeSettingsCode,
 } from "@mutator-party/shared";
+import {
+  loadLastUsedConfig,
+  saveLastUsedConfig,
+  loadCustomPresets,
+  saveCustomPreset,
+  deleteCustomPreset,
+} from "./settingsStorage";
 
-export type PresetType = "chaos" | "classic" | "tournament" | "chill" | "custom";
-
-interface UseSettingsFormProps {
-  initialSettings?: Partial<RoomSettings>;
-  onSave: (settings: Partial<RoomSettings>) => void;
+export interface UseSettingsFormProps {
+  initialSettings?: Partial<GameConfig>;
+  onSave: (settings: Partial<GameConfig>) => void;
 }
 
 export function useSettingsForm({ initialSettings, onSave }: UseSettingsFormProps) {
-  // Preset state & Tab switcher
-  const [activePreset, setActivePreset] = useState<PresetType>("chaos");
-  const [activeTab, setActiveTab] = useState<"rules" | "safety">("rules");
-
-  // ── Card A: Match and players ─────────────────────────────────────────────
-  const [maxPlayers, setMaxPlayers] = useState(
-    initialSettings?.match?.maxPlayers ?? 8,
-  );
-  const [minPlayersToStart, setMinPlayersToStart] = useState(
-    initialSettings?.match?.minPlayersToStart ?? 2,
-  );
-  const [fillBots, setFillBots] = useState(
-    initialSettings?.match?.fillBots ?? true,
-  );
-  const [botSkill, setBotSkill] = useState<"easy" | "normal" | "hard">(
-    initialSettings?.match?.botSkill ?? "normal",
-  );
-  const [rounds, setRounds] = useState(initialSettings?.match?.rounds ?? 5);
-  const [roundTime, setRoundTime] = useState<string>(
-    String(initialSettings?.match?.roundTime ?? "auto"),
-  );
-
-  // ── Card B: Arena ────────────────────────────────────────────────────────
-  const [platformCount, setPlatformCount] = useState(
-    initialSettings?.arena?.platformCount ?? 4,
-  );
-  const [islandSize, setIslandSize] = useState<"S" | "M" | "L">(
-    initialSettings?.arena?.islandSize ?? "M",
-  );
-  const [layout, setLayout] = useState<"every_round" | "per_match" | "classic">(
-    initialSettings?.arena?.layout ?? "every_round",
-  );
-  const [mirror, setMirror] = useState(initialSettings?.arena?.mirror ?? true);
-  const [shuffleSpawns, setShuffleSpawns] = useState(
-    initialSettings?.arena?.shuffleSpawns ?? true,
-  );
-
-  // ── Card C: Modes and level picks ─────────────────────────────────────────
-  const [selectedModes, setSelectedModes] = useState<Mode[]>(
-    initialSettings?.modes?.pool ? [...initialSettings.modes.pool] : [...MODES],
-  );
-  const [modeOrder, setModeOrder] = useState<
-    "shuffle_bag" | "random" | "fixed"
-  >(initialSettings?.modes?.order ?? "shuffle_bag");
-  const [twistPicker, setTwistPicker] = useState<
-    "last_place" | "vote" | "host" | "random" | "round_robin"
-  >(initialSettings?.modes?.twistPicker ?? "last_place");
-
-  // ── Card D: Hurdles (twists and hazards) ───────────────────────────────────
-  const [allowedTwists, setAllowedTwists] = useState<Twist[]>(
-    initialSettings?.twists?.allowed
-      ? [...initialSettings.twists.allowed]
-      : [...TWISTS],
-  );
-  const [twistsPerRound, setTwistsPerRound] = useState<
-    "1" | "ramp" | "2" | "3"
-  >((initialSettings?.twists?.perRound as any) ?? "ramp");
-  const [themeLinked, setThemeLinked] = useState(
-    initialSettings?.twists?.themeLinked ?? false,
-  );
-
-  // ── Card E: Respawn and lives ─────────────────────────────────────────────
-  const [respawnMode, setRespawnMode] = useState<"off" | "lives" | "unlimited">(
-    initialSettings?.respawn?.mode ?? "lives",
-  );
-  const [lives, setLives] = useState(initialSettings?.respawn?.lives ?? 3);
-  const [delaySec, setDelaySec] = useState(
-    initialSettings?.respawn?.delaySec ?? 2,
-  );
-  const [shieldSec, setShieldSec] = useState(
-    initialSettings?.respawn?.shieldSec ?? 1.5,
-  );
-
-  // ── Card F: Power-ups ─────────────────────────────────────────────────────
-  const [itemsEnabled, setItemsEnabled] = useState(
-    initialSettings?.items?.enabled ?? true,
-  );
-  const [allowedItems, setAllowedItems] = useState<Item[]>(
-    initialSettings?.items?.allowed
-      ? [...initialSettings.items.allowed]
-      : [...ITEMS],
-  );
-  const [itemSpots, setItemSpots] = useState(
-    initialSettings?.items?.spots ?? 3,
-  );
-  const [firstTouch, setFirstTouch] = useState(
-    initialSettings?.items?.firstTouch ?? true,
-  );
-  const [keepOnKO, setKeepOnKO] = useState(
-    initialSettings?.items?.keepOnKO ?? false,
-  );
-
-  // ── Card G: Theme ────────────────────────────────────────────────────────
-  const [themeMode, setThemeMode] = useState<
-    "fixed" | "rotate" | "random" | "custom"
-  >(initialSettings?.theme?.mode ?? "rotate");
-  const [fixedTheme, setFixedTheme] = useState<Theme>(
-    initialSettings?.theme?.fixed ?? "sunny",
-  );
-
-  // ── Tab H: Room & safety ─────────────────────────────────────────────────
-  const [roomName, setRoomName] = useState(initialSettings?.room?.name ?? "");
-  const [visibility, setVisibility] = useState<"public" | "private">(
-    initialSettings?.room?.visibility === "public" ? "public" : "private",
-  );
-  const [password, setPassword] = useState(
-    initialSettings?.room?.password ?? "",
-  );
-  const [chat, setChat] = useState<"off" | "emotes" | "filtered">(
-    initialSettings?.room?.chat ?? "emotes",
-  );
-  const [spectators, setSpectators] = useState(
-    initialSettings?.room?.spectators ?? true,
-  );
-  const [allowKick, setAllowKick] = useState(
-    initialSettings?.room?.allowKick ?? true,
-  );
-
-  const markCustom = () => setActivePreset("custom");
-
-  // ── Presets Application ───────────────────────────────────────────────────
-  const applyPreset = (preset: "classic" | "chaos" | "tournament" | "chill") => {
-    setActivePreset(preset);
-    if (preset === "classic") {
-      setRounds(5);
-      setMaxPlayers(8);
-      setFillBots(true);
-      setBotSkill("normal");
-      setSelectedModes(["brawl", "bomb", "crown"]);
-      setAllowedTwists([...TWISTS].slice(0, 5));
-      setTwistsPerRound("1");
-      setIslandSize("M");
-      setPlatformCount(4);
-      setLayout("classic");
-      setMirror(true);
-      setItemsEnabled(false);
-      setRespawnMode("off");
-    } else if (preset === "chaos") {
-      setRounds(5);
-      setMaxPlayers(8);
-      setFillBots(true);
-      setBotSkill("normal");
-      setSelectedModes(["brawl", "bomb", "crown"]);
-      setAllowedTwists([...TWISTS]);
-      setTwistsPerRound("ramp");
-      setIslandSize("M");
-      setPlatformCount(4);
-      setLayout("every_round");
-      setMirror(false);
-      setItemsEnabled(true);
-      setAllowedItems([...ITEMS]);
-      setItemSpots(3);
-      setRespawnMode("lives");
-      setLives(3);
-      setDelaySec(2);
-      setShieldSec(1.5);
-    } else if (preset === "tournament") {
-      setRounds(7);
-      setMaxPlayers(8);
-      setFillBots(false);
-      setSelectedModes(["brawl"]);
-      setAllowedTwists(["low", "ice", "speed"]);
-      setTwistsPerRound("1");
-      setIslandSize("L");
-      setPlatformCount(4);
-      setLayout("per_match");
-      setMirror(true);
-      setItemsEnabled(false);
-      setRespawnMode("lives");
-      setLives(2);
-      setDelaySec(3);
-      setShieldSec(1);
-    } else if (preset === "chill") {
-      setRounds(3);
-      setMaxPlayers(6);
-      setFillBots(true);
-      setBotSkill("easy");
-      setSelectedModes(["crown", "brawl"]);
-      setAllowedTwists(["low", "bounce", "tiny"]);
-      setTwistsPerRound("1");
-      setIslandSize("L");
-      setPlatformCount(5);
-      setLayout("classic");
-      setMirror(true);
-      setItemsEnabled(true);
-      setRespawnMode("unlimited");
-      setDelaySec(1.5);
-      setShieldSec(2);
+  // Load initial configuration (host's last-used config or initialSettings fallback)
+  const baseConfig: GameConfig = useMemo(() => {
+    if (initialSettings && Object.keys(initialSettings).length > 0) {
+      return {
+        ...PRESETS.chaosParty.config,
+        ...initialSettings,
+        room: { ...PRESETS.chaosParty.config.room, ...(initialSettings.room || {}) },
+        match: { ...PRESETS.chaosParty.config.match, ...(initialSettings.match || {}) },
+        arena: { ...PRESETS.chaosParty.config.arena, ...(initialSettings.arena || {}) },
+        modes: { ...PRESETS.chaosParty.config.modes, ...(initialSettings.modes || {}) },
+        twists: { ...PRESETS.chaosParty.config.twists, ...(initialSettings.twists || {}) },
+        respawn: { ...PRESETS.chaosParty.config.respawn, ...(initialSettings.respawn || {}) },
+        items: { ...PRESETS.chaosParty.config.items, ...(initialSettings.items || {}) },
+        theme: { ...PRESETS.chaosParty.config.theme, ...(initialSettings.theme || {}) },
+      };
     }
-  };
+    return loadLastUsedConfig();
+  }, []);
 
-  const toggleMode = (m: Mode) => {
-    markCustom();
-    if (selectedModes.includes(m)) {
-      if (selectedModes.length > 1) {
-        setSelectedModes(selectedModes.filter((x) => x !== m));
-      }
-    } else {
-      setSelectedModes([...selectedModes, m]);
-    }
-  };
+  // Determine which preset matches the initial config
+  const initialPresetId: string = useMemo(() => {
+    if (isConfigEqual(baseConfig, PRESETS.chaosParty.config)) return "chaosParty";
+    if (isConfigEqual(baseConfig, PRESETS.classic.config)) return "classic";
+    if (isConfigEqual(baseConfig, PRESETS.tournament.config)) return "tournament";
+    if (isConfigEqual(baseConfig, PRESETS.chill.config)) return "chill";
+    return "chaosParty";
+  }, [baseConfig]);
 
-  const toggleTwist = (t: Twist) => {
-    markCustom();
-    if (allowedTwists.includes(t)) {
-      if (allowedTwists.length > 1) {
-        setAllowedTwists(allowedTwists.filter((x) => x !== t));
-      }
-    } else {
-      setAllowedTwists([...allowedTwists, t]);
-    }
-  };
+  // Active preset ID (chaosParty, classic, tournament, chill, or custom ID)
+  const [activePresetId, setActivePresetId] = useState<string>(initialPresetId);
 
-  const toggleItem = (it: Item) => {
-    markCustom();
-    if (allowedItems.includes(it)) {
-      if (allowedItems.length > 1) {
-        setAllowedItems(allowedItems.filter((x) => x !== it));
-      }
-    } else {
-      setAllowedItems([...allowedItems, it]);
-    }
-  };
+  // Custom Presets stored in localStorage
+  const [customPresets, setCustomPresets] = useState<CustomPreset[]>(() => loadCustomPresets());
 
-  const handleSave = () => {
-    onSave({
+  // ── Quick Tweaks (Layer 2) & Advanced (Layer 3) State ───────────────────────
+
+  // Players & Bots
+  const [maxPlayers, setMaxPlayers] = useState<number>(baseConfig.match.maxPlayers);
+  const [minPlayersToStart, setMinPlayersToStart] = useState<number>(baseConfig.match.minPlayersToStart);
+  const [fillBots, setFillBots] = useState<boolean>(baseConfig.match.fillBots);
+  const [botSkill, setBotSkill] = useState<"easy" | "normal" | "hard">(baseConfig.match.botSkill);
+
+  // Rounds & Timing
+  const [rounds, setRounds] = useState<number>(baseConfig.match.rounds);
+  const [roundTime, setRoundTime] = useState<"auto" | number>(baseConfig.match.roundTime);
+
+  // Lives & Respawn
+  const [respawnMode, setRespawnMode] = useState<"off" | "lives" | "unlimited">(baseConfig.respawn.mode);
+  const [lives, setLives] = useState<number>(baseConfig.respawn.lives);
+
+  // Theme
+  const [themeMode, setThemeMode] = useState<"fixed" | "rotate" | "random" | "custom">(baseConfig.theme.mode);
+  const [fixedTheme, setFixedTheme] = useState<Theme>(baseConfig.theme.fixed);
+
+  // Twists & Hurdles
+  const [allowedTwists, setAllowedTwists] = useState<Twist[]>([...baseConfig.twists.allowed]);
+  const [twistsPerRound, setTwistsPerRound] = useState<"1" | "ramp" | "2" | "3">(
+    (baseConfig.twists.perRound as any) || "ramp"
+  );
+  const [twistPicker, setTwistPicker] = useState<"last_place" | "vote" | "host" | "random" | "round_robin">(
+    baseConfig.modes.twistPicker
+  );
+  const [themeLinked, setThemeLinked] = useState<boolean>(baseConfig.twists.themeLinked);
+
+  // Arena
+  const [platformCount, setPlatformCount] = useState<number>(baseConfig.arena.platformCount);
+  const [islandSize, setIslandSize] = useState<"S" | "M" | "L">(baseConfig.arena.islandSize);
+  const [layout, setLayout] = useState<"every_round" | "per_match" | "classic">(baseConfig.arena.layout);
+  const [shuffleSpawns, setShuffleSpawns] = useState<boolean>(baseConfig.arena.shuffleSpawns);
+
+  // Modes & Items
+  const [selectedModes, setSelectedModes] = useState<Mode[]>([...baseConfig.modes.pool]);
+  const [modeOrder, setModeOrder] = useState<"shuffle_bag" | "random" | "fixed">(baseConfig.modes.order);
+  const [itemsEnabled, setItemsEnabled] = useState<boolean>(baseConfig.items.enabled);
+  const [allowedItems, setAllowedItems] = useState<Item[]>([...baseConfig.items.allowed]);
+  const [itemSpots, setItemSpots] = useState<number>(baseConfig.items.spots);
+  const [firstTouch, setFirstTouch] = useState<boolean>(baseConfig.items.firstTouch);
+  const [keepOnKO, setKeepOnKO] = useState<boolean>(baseConfig.items.keepOnKO);
+
+  // Room & Safety
+  const [roomName, setRoomName] = useState<string>(baseConfig.room.name);
+  const [visibility, setVisibility] = useState<"public" | "private">(baseConfig.room.visibility);
+  const [password, setPassword] = useState<string>(baseConfig.room.password || "");
+  const [spectators, setSpectators] = useState<boolean>(baseConfig.room.spectators);
+  const [chat, setChat] = useState<"off" | "emotes" | "filtered">(baseConfig.room.chat);
+  const [allowKick, setAllowKick] = useState<boolean>(baseConfig.room.allowKick);
+
+  // Tournament lock status
+  const isTournament = activePresetId === "tournament";
+
+  // Build current unified config object
+  const currentConfig: GameConfig = useMemo(() => {
+    return {
+      version: 1,
       room: {
-        name: roomName || "Custom Room",
+        name: roomName,
         visibility,
-        password: password || "",
+        password,
         chat,
-        spectators,
+        spectators: isTournament ? true : spectators,
         allowKick,
       },
       match: {
         maxPlayers,
-        minPlayersToStart,
-        fillBots,
+        minPlayersToStart: Math.min(maxPlayers, isTournament ? Math.max(4, minPlayersToStart) : minPlayersToStart),
+        fillBots: isTournament ? false : fillBots,
         botSkill,
         rounds,
-        roundTime: roundTime === "auto" ? "auto" : Number(roundTime),
-        scoring: initialSettings?.match?.scoring ?? DEFAULTS.match.scoring,
+        roundTime: isTournament ? 60 : roundTime,
+        scoring: "standard",
       },
       arena: {
         platformCount,
         islandSize,
-        layout,
-        mirror,
-        shuffleSpawns,
+        layout: isTournament ? "per_match" : layout,
+        mirror: true,
+        shuffleSpawns: isTournament ? false : shuffleSpawns,
       },
       modes: {
         pool: selectedModes,
-        order: modeOrder,
-        fixedList:
-          initialSettings?.modes?.fixedList ??
-          (DEFAULTS.modes.fixedList as Mode[]),
-        twistPicker,
+        order: isTournament ? "fixed" : modeOrder,
+        fixedList: isTournament ? ["brawl", "crown", "bomb", "brawl", "crown", "bomb", "brawl"] : [],
+        twistPicker: isTournament ? "vote" : twistPicker,
       },
       twists: {
         allowed: allowedTwists,
-        perRound: twistsPerRound,
+        perRound: isTournament ? "1" : twistsPerRound,
         themeLinked,
       },
       respawn: {
         mode: respawnMode,
         lives,
-        delaySec,
-        shieldSec,
-        where: DEFAULTS.respawn.where,
+        delaySec: baseConfig.respawn.delaySec,
+        shieldSec: baseConfig.respawn.shieldSec,
+        where: "random_platform",
       },
       items: {
-        enabled: itemsEnabled,
+        enabled: isTournament ? false : itemsEnabled,
         allowed: allowedItems,
-        spots: itemSpots,
+        spots: isTournament ? 0 : itemSpots,
         firstTouch,
         keepOnKO,
       },
       theme: {
-        mode: themeMode,
-        fixed: fixedTheme,
-        perRound: DEFAULTS.theme.perRound as Theme[],
+        mode: isTournament ? "fixed" : themeMode,
+        fixed: isTournament ? "sunny" : fixedTheme,
+        perRound: [],
       },
-    });
+    };
+  }, [
+    roomName,
+    visibility,
+    password,
+    chat,
+    spectators,
+    allowKick,
+    maxPlayers,
+    minPlayersToStart,
+    fillBots,
+    botSkill,
+    rounds,
+    roundTime,
+    respawnMode,
+    lives,
+    platformCount,
+    islandSize,
+    layout,
+    shuffleSpawns,
+    selectedModes,
+    modeOrder,
+    twistPicker,
+    allowedTwists,
+    twistsPerRound,
+    themeLinked,
+    itemsEnabled,
+    allowedItems,
+    itemSpots,
+    firstTouch,
+    keepOnKO,
+    themeMode,
+    fixedTheme,
+    isTournament,
+    baseConfig,
+  ]);
+
+  // Modified detection: compare currentConfig against the active preset's canonical config
+  const isModified = useMemo(() => {
+    let referenceConfig: GameConfig | null = null;
+    if (activePresetId === "chaosParty") referenceConfig = PRESETS.chaosParty.config;
+    else if (activePresetId === "classic") referenceConfig = PRESETS.classic.config;
+    else if (activePresetId === "tournament") referenceConfig = PRESETS.tournament.config;
+    else if (activePresetId === "chill") referenceConfig = PRESETS.chill.config;
+    else {
+      const custom = customPresets.find((p) => p.id === activePresetId);
+      if (custom) referenceConfig = custom.config;
+    }
+
+    if (!referenceConfig) return false;
+    return !isConfigEqual(currentConfig, referenceConfig);
+  }, [currentConfig, activePresetId, customPresets]);
+
+  // Active preset display name
+  const activePresetName = useMemo(() => {
+    if (activePresetId === "chaosParty") return "Chaos Party";
+    if (activePresetId === "classic") return "Classic";
+    if (activePresetId === "tournament") return "Tournament";
+    if (activePresetId === "chill") return "Chill";
+    const custom = customPresets.find((p) => p.id === activePresetId);
+    return custom ? custom.name : "Custom";
+  }, [activePresetId, customPresets]);
+
+  // Live match preview string
+  const matchPreview = useMemo(() => {
+    return computeMatchPreview(currentConfig);
+  }, [currentConfig]);
+
+  // Validation
+  const validationError = useMemo<string | null>(() => {
+    if (selectedModes.length === 0) return "At least 1 game mode must be enabled";
+    if (allowedTwists.length === 0) return "At least 1 twist must be enabled";
+    if (rounds < 1 || rounds > 15) return "Rounds must be between 1 and 15";
+    if (minPlayersToStart > maxPlayers) return "Min players cannot exceed max players";
+    return null;
+  }, [selectedModes, allowedTwists, rounds, minPlayersToStart, maxPlayers]);
+
+  const isValid = validationError === null;
+
+  // Apply a preset
+  const applyPreset = (presetId: PresetId | string, config: GameConfig) => {
+    setActivePresetId(presetId);
+
+    setMaxPlayers(config.match.maxPlayers);
+    setMinPlayersToStart(config.match.minPlayersToStart);
+    setFillBots(config.match.fillBots);
+    setBotSkill(config.match.botSkill);
+    setRounds(config.match.rounds);
+    setRoundTime(config.match.roundTime);
+
+    setRespawnMode(config.respawn.mode);
+    setLives(config.respawn.lives);
+
+    setThemeMode(config.theme.mode);
+    setFixedTheme(config.theme.fixed);
+
+    setAllowedTwists([...config.twists.allowed]);
+    setTwistsPerRound((config.twists.perRound as any) || "ramp");
+    setTwistPicker(config.modes.twistPicker);
+    setThemeLinked(config.twists.themeLinked);
+
+    setPlatformCount(config.arena.platformCount);
+    setIslandSize(config.arena.islandSize);
+    setLayout(config.arena.layout);
+    setShuffleSpawns(config.arena.shuffleSpawns);
+
+    setSelectedModes([...config.modes.pool]);
+    setModeOrder(config.modes.order);
+    setItemsEnabled(config.items.enabled);
+    setAllowedItems([...config.items.allowed]);
+    setItemSpots(config.items.spots);
+    setFirstTouch(config.items.firstTouch);
+    setKeepOnKO(config.items.keepOnKO);
   };
 
+  // Reset back to current preset defaults
+  const resetToPreset = () => {
+    let targetConfig: GameConfig = PRESETS.chaosParty.config;
+    if (activePresetId === "classic") targetConfig = PRESETS.classic.config;
+    else if (activePresetId === "tournament") targetConfig = PRESETS.tournament.config;
+    else if (activePresetId === "chill") targetConfig = PRESETS.chill.config;
+    else {
+      const custom = customPresets.find((p) => p.id === activePresetId);
+      if (custom) targetConfig = custom.config;
+    }
+    applyPreset(activePresetId, targetConfig);
+  };
+
+  // Surprise Me action
+  const surpriseMe = () => {
+    // Pick 4 to 8 random twists
+    const shuffledTwists = [...TWISTS].sort(() => 0.5 - Math.random());
+    const count = Math.floor(Math.random() * 5) + 4;
+    setAllowedTwists(shuffledTwists.slice(0, count));
+
+    // Randomize theme
+    const pickTheme = Math.random() > 0.4;
+    if (pickTheme) {
+      setThemeMode("fixed");
+      const randomTheme = THEMES[Math.floor(Math.random() * THEMES.length)] || "sunny";
+      setFixedTheme(randomTheme);
+    } else {
+      setThemeMode("rotate");
+    }
+
+    // Randomize mode order
+    const orders: Array<"shuffle_bag" | "random"> = ["shuffle_bag", "random"];
+    setModeOrder(orders[Math.floor(Math.random() * orders.length)] || "shuffle_bag");
+  };
+
+  // Save as custom preset
+  const handleSaveAsCustom = (name: string, icon: any) => {
+    const updated = saveCustomPreset({
+      name,
+      icon,
+      config: currentConfig,
+    });
+    setCustomPresets(updated);
+    if (updated.length > 0) {
+      const last = updated[updated.length - 1];
+      if (last) setActivePresetId(last.id);
+    }
+  };
+
+  // Delete custom preset
+  const handleDeleteCustom = (id: string) => {
+    const updated = deleteCustomPreset(id);
+    setCustomPresets(updated);
+    if (activePresetId === id) {
+      applyPreset("chaosParty", PRESETS.chaosParty.config);
+    }
+  };
+
+  // Save handler: persist to localStorage & notify server
+  const handleSave = () => {
+    if (!isValid) return;
+    saveLastUsedConfig(currentConfig);
+    onSave(currentConfig);
+  };
+
+  // Shareable settings code
+  const settingsCode = useMemo(() => {
+    return encodeSettingsCode(currentConfig);
+  }, [currentConfig]);
+
   return {
-    activePreset,
-    activeTab,
-    setActiveTab,
+    // Top-level state & metadata
+    activePresetId,
+    activePresetName,
+    isModified,
+    isTournament,
+    matchPreview,
+    settingsCode,
+    customPresets,
+    isValid,
+    validationError,
+
+    // Actions
     applyPreset,
-    markCustom,
+    resetToPreset,
+    surpriseMe,
     handleSave,
-    // Card A
+    handleSaveAsCustom,
+    handleDeleteCustom,
+
+    // Quick Tweaks values & setters
     maxPlayers,
     setMaxPlayers,
     minPlayersToStart,
@@ -324,69 +396,67 @@ export function useSettingsForm({ initialSettings, onSave }: UseSettingsFormProp
     setRounds,
     roundTime,
     setRoundTime,
-    // Card B
-    platformCount,
-    setPlatformCount,
-    islandSize,
-    setIslandSize,
-    layout,
-    setLayout,
-    mirror,
-    setMirror,
-    shuffleSpawns,
-    setShuffleSpawns,
-    // Card C
-    selectedModes,
-    modeOrder,
-    setModeOrder,
-    twistPicker,
-    setTwistPicker,
-    toggleMode,
-    // Card D
-    allowedTwists,
-    twistsPerRound,
-    setTwistsPerRound,
-    themeLinked,
-    setThemeLinked,
-    toggleTwist,
-    // Card E
     respawnMode,
-    setRespawnMode,
     lives,
-    setLives,
-    delaySec,
-    setDelaySec,
-    shieldSec,
-    setShieldSec,
-    // Card F
-    itemsEnabled,
-    setItemsEnabled,
-    allowedItems,
-    itemSpots,
-    setItemSpots,
-    firstTouch,
-    setFirstTouch,
-    keepOnKO,
-    setKeepOnKO,
-    toggleItem,
-    // Card G
+    setRespawn: (mode: "off" | "lives" | "unlimited", l: number) => {
+      setRespawnMode(mode);
+      setLives(l);
+    },
     themeMode,
-    setThemeMode,
     fixedTheme,
-    setFixedTheme,
-    // Tab H
-    roomName,
-    setRoomName,
-    visibility,
-    setVisibility,
-    password,
-    setPassword,
-    chat,
-    setChat,
-    spectators,
-    setSpectators,
-    allowKick,
-    setAllowKick,
+    setTheme: (mode: "fixed" | "rotate", fixed?: Theme) => {
+      setThemeMode(mode);
+      if (fixed) setFixedTheme(fixed);
+    },
+
+    // Advanced Accordion data & batch updater
+    advancedData: {
+      allowedTwists,
+      twistsPerRound,
+      twistPicker,
+      themeLinked,
+      platformCount,
+      islandSize,
+      layout,
+      shuffleSpawns,
+      selectedModes,
+      modeOrder,
+      itemsEnabled,
+      allowedItems,
+      itemSpots,
+      firstTouch,
+      keepOnKO,
+      roomName,
+      visibility,
+      password,
+      spectators,
+      chat,
+      allowKick,
+      minPlayersToStart,
+      maxPlayers,
+    },
+    updateAdvanced: (patch: any) => {
+      if (patch.allowedTwists !== undefined) setAllowedTwists(patch.allowedTwists);
+      if (patch.twistsPerRound !== undefined) setTwistsPerRound(patch.twistsPerRound);
+      if (patch.twistPicker !== undefined) setTwistPicker(patch.twistPicker);
+      if (patch.themeLinked !== undefined) setThemeLinked(patch.themeLinked);
+      if (patch.platformCount !== undefined) setPlatformCount(patch.platformCount);
+      if (patch.islandSize !== undefined) setIslandSize(patch.islandSize);
+      if (patch.layout !== undefined) setLayout(patch.layout);
+      if (patch.shuffleSpawns !== undefined) setShuffleSpawns(patch.shuffleSpawns);
+      if (patch.selectedModes !== undefined) setSelectedModes(patch.selectedModes);
+      if (patch.modeOrder !== undefined) setModeOrder(patch.modeOrder);
+      if (patch.itemsEnabled !== undefined) setItemsEnabled(patch.itemsEnabled);
+      if (patch.allowedItems !== undefined) setAllowedItems(patch.allowedItems);
+      if (patch.itemSpots !== undefined) setItemSpots(patch.itemSpots);
+      if (patch.firstTouch !== undefined) setFirstTouch(patch.firstTouch);
+      if (patch.keepOnKO !== undefined) setKeepOnKO(patch.keepOnKO);
+      if (patch.roomName !== undefined) setRoomName(patch.roomName);
+      if (patch.visibility !== undefined) setVisibility(patch.visibility);
+      if (patch.password !== undefined) setPassword(patch.password);
+      if (patch.spectators !== undefined) setSpectators(patch.spectators);
+      if (patch.chat !== undefined) setChat(patch.chat);
+      if (patch.allowKick !== undefined) setAllowKick(patch.allowKick);
+    },
   };
 }
-

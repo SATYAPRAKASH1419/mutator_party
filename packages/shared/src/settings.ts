@@ -189,6 +189,7 @@ export const RoomSettingsSchema = z.object({
 }).default(DEFAULTS);
 
 export type RoomSettings = z.infer<typeof RoomSettingsSchema>;
+export type GameConfig = RoomSettings;
 
 
 // ─── sanitize() ──────────────────────────────────────────────────────────────
@@ -211,6 +212,19 @@ export function sanitize(input: unknown = {}, base: RoomSettings = DEFAULTS as R
     const it = g('items');
     const th = g('theme');
 
+    const maxPlayers = clamp(m.maxPlayers, 2, 12, b.match.maxPlayers, true) as number;
+    const minPlayersToStart = Math.min(
+        maxPlayers,
+        clamp(m.minPlayersToStart, 2, maxPlayers, Math.min(b.match.minPlayersToStart, maxPlayers), true) as number
+    );
+
+    const rawTwists = Array.isArray(t.allowed)
+        ? ([...new Set(t.allowed.filter((x): x is Twist => (TWISTS as readonly string[]).includes(x)))] as Twist[])
+        : [...b.twists.allowed];
+
+    const rawModes = subset(md.pool, MODES, b.modes.pool);
+    const poolModes = rawModes.length > 0 ? rawModes : (b.modes.pool.length > 0 ? [...b.modes.pool] : ['brawl' as Mode]);
+
     const merged = {
         version: 1 as const,
         room: {
@@ -222,8 +236,8 @@ export function sanitize(input: unknown = {}, base: RoomSettings = DEFAULTS as R
             allowKick: r.allowKick !== undefined ? r.allowKick !== false : b.room.allowKick,
         },
         match: {
-            maxPlayers: clamp(m.maxPlayers, 2, 12, b.match.maxPlayers, true),
-            minPlayersToStart: clamp(m.minPlayersToStart, 2, 12, b.match.minPlayersToStart, true),
+            maxPlayers,
+            minPlayersToStart,
             fillBots: m.fillBots !== undefined ? m.fillBots !== false : b.match.fillBots,
             botSkill: oneOf(m.botSkill, ['easy', 'normal', 'hard'] as const, b.match.botSkill),
             rounds: clamp(m.rounds, 1, 15, b.match.rounds, true),
@@ -240,7 +254,7 @@ export function sanitize(input: unknown = {}, base: RoomSettings = DEFAULTS as R
             shuffleSpawns: a.shuffleSpawns !== undefined ? a.shuffleSpawns !== false : b.arena.shuffleSpawns,
         },
         modes: {
-            pool: subset(md.pool, MODES, b.modes.pool),
+            pool: poolModes,
             order: oneOf(md.order, ['shuffle_bag', 'random', 'fixed'] as const, b.modes.order),
             fixedList: Array.isArray(md.fixedList)
                 ? (md.fixedList.filter((x): x is Mode => (MODES as readonly string[]).includes(x)).slice(0, 15) as Mode[])
@@ -248,9 +262,7 @@ export function sanitize(input: unknown = {}, base: RoomSettings = DEFAULTS as R
             twistPicker: oneOf(md.twistPicker, ['last_place', 'vote', 'host', 'random', 'round_robin'] as const, b.modes.twistPicker),
         },
         twists: {
-            allowed: Array.isArray(t.allowed)
-                ? ([...new Set(t.allowed.filter((x): x is Twist => (TWISTS as readonly string[]).includes(x)))] as Twist[])
-                : [...b.twists.allowed],
+            allowed: rawTwists,
             perRound: oneOf(t.perRound, ['1', '2', '3', 'ramp'] as const, b.twists.perRound),
             themeLinked: t.themeLinked !== undefined ? t.themeLinked === true : b.twists.themeLinked,
         },

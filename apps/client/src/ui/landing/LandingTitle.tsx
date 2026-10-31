@@ -1,9 +1,9 @@
 function getLetterStyle(color: string) {
   return {
     fontFamily: "var(--font-display)",
-    fontSize: "clamp(22px, 6.2vw, 36px)",
+    fontSize: "clamp(26px, 6.8vw, 40px)",
     color,
-    WebkitTextStroke: "clamp(1.8px, 0.45vw, 2.5px) var(--mp-ink, #1B1B3A)",
+    WebkitTextStroke: "clamp(2px, 0.5vw, 2.8px) var(--mp-ink, #1B1B3A)",
     paintOrder: "stroke fill",
     textShadow: "0 3px 0 var(--mp-ink, #1B1B3A)",
     lineHeight: 1,
@@ -17,15 +17,21 @@ function getLetterStyle(color: string) {
 export function LandingTitle() {
   return (
     <>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          flexWrap: "nowrap",
-          maxWidth: "100%",
-        }}
-      >
+      <style>{`
+        @keyframes mpTitleWobble {
+          0%, 100% { transform: translateY(0) rotate(-0.8deg); }
+          50% { transform: translateY(-5px) rotate(0.8deg); }
+        }
+        .mp-title-letters {
+          animation: mpTitleWobble 3s ease-in-out infinite;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-wrap: nowrap;
+          max-width: 100%;
+        }
+      `}</style>
+      <div className="mp-title-letters">
         <span style={getLetterStyle("#FF6B6B")}>M</span>
         <span style={getLetterStyle("#3DDC97")}>U</span>
         <span style={getLetterStyle("#8B5CF6")}>T</span>
@@ -33,7 +39,7 @@ export function LandingTitle() {
         <span style={getLetterStyle("#4CC9F0")}>T</span>
         <span style={getLetterStyle("#FF9F1C")}>O</span>
         <span style={getLetterStyle("#F15BB5")}>R</span>
-        <span style={{ width: "clamp(6px, 1.8vw, 12px)" }} />
+        <span style={{ width: "clamp(6px, 1.8vw, 14px)" }} />
         <span style={getLetterStyle("#2EC4B6")}>P</span>
         <span style={getLetterStyle("#FF6B6B")}>A</span>
         <span style={getLetterStyle("#3DDC97")}>R</span>
@@ -43,11 +49,11 @@ export function LandingTitle() {
 
       <div
         style={{
-          fontSize: "clamp(11.5px, 2.8vw, 13px)",
+          fontSize: "clamp(12.5px, 2.8vw, 14px)",
           fontWeight: 900,
           color: "var(--mp-ink, #1B1B3A)",
           textAlign: "center",
-          marginTop: "-6px",
+          marginTop: "-4px",
           letterSpacing: "0.2px",
         }}
       >

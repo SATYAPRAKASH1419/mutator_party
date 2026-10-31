@@ -21,10 +21,10 @@ const FUN_NAMES = [
   "Cosmic Taco",
   "Turbo Waffle",
   "Magic Donut",
-  "Bunty",
-  "Pappu",
-  "Chintu",
-  "Pinky",
+  "Bunty_ji",
+  "Pappaya",
+  "Chahat",
+  "Pink ball",
 ];
 
 interface UseLandingFormProps {
@@ -34,11 +34,14 @@ interface UseLandingFormProps {
 
 export function useLandingForm({ onJoin, onCreate }: UseLandingFormProps) {
   const profile = appStore.getState().profile;
-  const initialCode = appStore.getState().roomCode || "";
+  const inviteMatch = window.location.pathname.match(/\/r\/([A-Za-z0-9]{5})/i);
+  const initialCode =
+    inviteMatch?.[1]?.toUpperCase() || appStore.getState().roomCode || "";
 
-  const [activeTab, setActiveTab] = useState<"create" | "join">("create");
+  const [activeTab, setActiveTab] = useState<"create" | "join">(
+    inviteMatch ? "join" : "create",
+  );
   const [name, setName] = useState(profile.name || "Austin");
-  const [selectedColor, setSelectedColor] = useState(profile.color ?? 0);
   const [digits, setDigits] = useState<string[]>(() => {
     const chars = initialCode.toUpperCase().slice(0, 5).split("");
     while (chars.length < 5) chars.push("");
@@ -158,12 +161,6 @@ export function useLandingForm({ onJoin, onCreate }: UseLandingFormProps) {
     onJoin(fullCode);
   };
 
-  const handleColorChange = (idx: number) => {
-    clientLog.action("Select player color", { colorIndex: idx });
-    setSelectedColor(idx);
-    appStore.setProfile({ color: idx });
-  };
-
   const handleNameChange = (val: string) => {
     setName(val);
     setNameError("");
@@ -175,7 +172,6 @@ export function useLandingForm({ onJoin, onCreate }: UseLandingFormProps) {
     setActiveTab,
     name,
     nameError,
-    selectedColor,
     digits,
     isFullscreen,
     isMobile,
@@ -183,7 +179,6 @@ export function useLandingForm({ onJoin, onCreate }: UseLandingFormProps) {
     handleToggleFullscreen,
     handleRollDice,
     handleNameChange,
-    handleColorChange,
     handleDigitChange,
     handleDigitPaste,
     handleDigitKeyDown,
